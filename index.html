@@ -192,17 +192,25 @@ function showToast(msg, type="success") {
 
 // ── API CALL ───────────────────────────────────────────
 async function callClaude(prompt) {
-  const headers = { "Content-Type": "application/json" };
-  if (state.apiKey) headers["x-api-key"] = state.apiKey;
+  if (!state.apiKey) throw new Error("Chiave API mancante");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": state.apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }]
     })
   });
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err?.error?.message || "Errore API " + res.status);
+  }
   const data = await res.json();
   const text = (data.content || []).map(b => b.text || "").join("");
   const clean = text.replace(/```json|```/g, "").trim();
@@ -244,7 +252,8 @@ async function generateFromFrench() {
     };
     showToast("Informazioni generate!");
   } catch(e) {
-    showToast("Errore nella generazione", "error");
+    const msg = !state.apiKey ? "⚙ Inserisci la chiave API nelle impostazioni" : "Errore: " + (e.message || "generazione fallita");
+    showToast(msg, "error");
   }
 
   state.generating = false;
@@ -280,7 +289,8 @@ async function generateFromItalian() {
     };
     showToast("Traduzione completata! Controlla e premi Aggiungi.");
   } catch(e) {
-    showToast("Errore nella traduzione", "error");
+    const msg2 = !state.apiKey ? "⚙ Inserisci la chiave API nelle impostazioni" : "Errore: " + (e.message || "traduzione fallita");
+    showToast(msg2, "error");
   }
 
   state.generating = false;
