@@ -431,7 +431,7 @@ function render() {
     if (state.mode === "it") {
       // ── MODALITÀ ITALIANO
       html += '<div class="form-row">';
-      html += '<input class="field" id="itWordInput" type="text" placeholder="Parola o frase in italiano *" value="' + esc(state.itWord) + '" oninput="state.itWord=this.value" onkeydown="if(event.key===\'Enter\')generateFromItalian()">';
+      html += '<input class="field" id="itWordInput" type="text" placeholder="Parola o frase in italiano *" value="' + esc(state.itWord) + '" oninput="state.itWord=this.value;render()" onkeydown="if(event.key===\'Enter\')generateFromItalian()">';
       html += '<button class="btn-generate" onclick="generateFromItalian()" ' + (!state.itWord.trim()||state.generating?"disabled":"") + '>';
       html += state.generating ? '<span class="spinner"></span> …' : '✨ Traduci';
       html += '</button></div>';
@@ -441,7 +441,7 @@ function render() {
     } else {
       // ── MODALITÀ FRANCESE
       html += '<div class="form-row">';
-      html += '<input class="field" id="frWordInput" type="text" placeholder="Parola francese *" value="' + esc(state.form.word) + '" oninput="state.form.word=this.value;state.warning=null" onkeydown="if(event.key===\'Enter\')addWord()">';
+      html += '<input class="field" id="frWordInput" type="text" placeholder="Parola francese *" value="' + esc(state.form.word) + '" oninput="state.form.word=this.value;state.warning=null;render()" onkeydown="if(event.key===\'Enter\')addWord()">';
       html += '<button class="btn-generate" onclick="generateFromFrench()" ' + (!state.form.word.trim()||state.generating?"disabled":"") + '>';
       html += state.generating ? '<span class="spinner"></span> …' : '✨ Genera';
       html += '</button></div>';
@@ -538,12 +538,11 @@ function render() {
     html += '<div class="modal-subtitle">Inserisci la tua chiave API Anthropic per abilitare la generazione automatica di traduzioni ed esempi.</div>';
     html += '<div class="settings-row">';
     html += '<div class="settings-label">Chiave API (sk-ant-...)</div>';
-    html += '<input class="field" type="password" placeholder="sk-ant-api03-..." value="' + esc(state.apiKey) + '" oninput="state.apiKey=this.value">';
+    html += '<input class="field" type="password" placeholder="sk-ant-api03-..." value="' + esc(state.apiKey) + '" oninput="state.apiKey=this.value;saveApiKey(this.value)">';
     html += '</div>';
-    html += '<div style="font-family:\'Source Code Pro\',monospace;font-size:0.65rem;color:#444;line-height:1.6;margin-bottom:1rem">Ottienila su console.anthropic.com — viene salvata solo sul tuo telefono.</div>';
+    html += '<div style="font-family:\'Source Code Pro\',monospace;font-size:0.65rem;color:#444;line-height:1.6;margin-bottom:1rem">Ottienila su console.anthropic.com — salvata automaticamente sul tuo telefono.</div>';
     html += '<div class="modal-actions">';
-    html += '<button class="btn-ghost" onclick="state.showSettings=false;render()">Annulla</button>';
-    html += '<button class="btn-add" onclick="saveApiKey(state.apiKey);state.showSettings=false;showToast(\'Chiave salvata!\');render()">Salva</button>';
+    html += '<button class="btn-add" onclick="state.showSettings=false;render()">Chiudi</button>';
     html += '</div></div></div>';
   }
 
