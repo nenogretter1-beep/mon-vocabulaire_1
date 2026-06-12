@@ -12,69 +12,46 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #0f0e0c; color: #e8e0d0; font-family: 'Playfair Display', Georgia, serif; min-height: 100vh; }
   ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0f0e0c; } ::-webkit-scrollbar-thumb { background: #2a2820; border-radius: 2px; }
-
-  /* HEADER */
   .header { border-bottom: 1px solid #2a2820; padding: 1.2rem 1.2rem 1rem; }
   .header-top { display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
   .app-title { font-size: 1.5rem; font-weight: 400; color: #e8e0d0; }
   .app-subtitle { font-family: 'Source Code Pro', monospace; font-size: 0.65rem; color: #555; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 0.1rem; }
   .header-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-
-  /* TABS */
   .tabs { border-bottom: 1px solid #1e1c18; display: flex; overflow-x: auto; padding: 0 0.5rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 0.6rem 0.9rem; font-family: 'Source Code Pro', monospace; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; color: #555; white-space: nowrap; transition: color 0.2s; }
   .tab.active { border-bottom-color: currentColor; }
   .tab-count { font-size: 0.65rem; opacity: 0.7; margin-left: 0.2rem; }
-
-  /* MODE TOGGLE */
   .mode-toggle { display: flex; background: #141210; border: 1px solid #242018; border-radius: 6px; padding: 0.3rem; gap: 0.3rem; margin-bottom: 1rem; }
-  .mode-btn { flex: 1; background: none; border: none; border-radius: 4px; padding: 0.5rem 0.6rem; font-family: 'Source Code Pro', monospace; font-size: 0.72rem; letter-spacing: 0.08em; color: #555; cursor: pointer; transition: all 0.2s; text-align: center; }
+  .mode-btn { flex: 1; background: none; border: none; border-radius: 4px; padding: 0.5rem 0.6rem; font-family: 'Source Code Pro', monospace; font-size: 0.72rem; color: #555; cursor: pointer; transition: all 0.2s; text-align: center; }
   .mode-btn.active { background: #1e1c18; color: #d4a853; }
-
-  /* FORM */
   .form-box { background: #141210; border: 1px solid #242018; border-radius: 6px; padding: 1rem; margin-bottom: 1.2rem; }
   .form-label { font-family: 'Source Code Pro', monospace; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.7rem; }
   .form-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem; }
-  input.field, textarea.field {
-    background: #1a1814; border: 1px solid #2a2820; border-radius: 4px;
-    padding: 0.55rem 0.8rem; color: #e8e0d0;
-    font-family: 'Source Code Pro', monospace; font-size: 0.8rem;
-    outline: none; width: 100%; transition: border-color 0.2s;
-  }
+  input.field, textarea.field { background: #1a1814; border: 1px solid #2a2820; border-radius: 4px; padding: 0.55rem 0.8rem; color: #e8e0d0; font-family: 'Source Code Pro', monospace; font-size: 0.8rem; outline: none; width: 100%; transition: border-color 0.2s; }
   input.field:focus, textarea.field:focus { border-color: #d4a853; }
   textarea.field { resize: none; min-height: 60px; line-height: 1.5; }
-
-  /* BUTTONS */
-  .btn-add { background: #d4a853; color: #0f0e0c; border: none; border-radius: 4px; padding: 0.55rem 1.1rem; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+  .btn-add { background: #d4a853; color: #0f0e0c; border: none; border-radius: 4px; padding: 0.55rem 1.1rem; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
   .btn-add:disabled { background: #333; color: #666; cursor: not-allowed; }
   .btn-generate { background: #1e1c18; border: 1px solid #3a3428; color: #c8a84a; border-radius: 4px; padding: 0.55rem 0.9rem; font-family: 'Source Code Pro', monospace; font-size: 0.72rem; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 0.4rem; transition: all 0.2s; }
-  .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-icon { background: #1a1814; border: 1px solid #2a2820; color: #888; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; transition: all 0.2s; white-space: nowrap; }
-  .btn-icon:hover { border-color: #3a3830; color: #bbb; }
+  .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .btn-icon { background: #1a1814; border: 1px solid #2a2820; color: #888; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
   .btn-ghost { background: none; border: 1px solid #2a2820; color: #888; border-radius: 4px; padding: 0.45rem 0.9rem; cursor: pointer; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; }
   .btn-danger { background: #c97e7e22; border: 1px solid #c97e7e; color: #c97e7e; border-radius: 4px; padding: 0.45rem 0.9rem; cursor: pointer; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; }
   .btn-import { border: none; border-radius: 4px; padding: 0.45rem 1rem; cursor: pointer; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; font-weight: 700; }
-
-  /* SPINNER */
+  .btn-action { background: #1e1c18; border: 1px solid #2a2820; color: #888; border-radius: 4px; padding: 0.3rem 0.6rem; font-family: 'Source Code Pro', monospace; font-size: 0.65rem; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+  .btn-action:hover { border-color: #d4a853; color: #d4a853; }
   .spinner { width: 11px; height: 11px; border: 2px solid #3a3428; border-top-color: #c8a84a; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* WARNING */
   .warning-box { display: flex; align-items: flex-start; gap: 0.5rem; border-radius: 4px; padding: 0.6rem 0.7rem; margin-bottom: 0.5rem; }
   .warning-spelling { background: #2a1a0e; border: 1px solid #c98e7e; }
   .warning-category { background: #0e1e2a; border: 1px solid #7eb8c9; }
   .warning-text { font-family: 'Source Code Pro', monospace; font-size: 0.7rem; line-height: 1.5; }
-  .warning-label-spelling { color: #c98e7e; text-transform: uppercase; letter-spacing: 0.1em; }
-  .warning-label-category { color: #7eb8c9; text-transform: uppercase; letter-spacing: 0.1em; }
   .btn-use-correction { background: #c98e7e22; border: 1px solid #c98e7e; color: #c98e7e; border-radius: 3px; padding: 0.1rem 0.4rem; cursor: pointer; font-family: 'Source Code Pro', monospace; font-size: 0.65rem; margin-left: 0.5rem; }
-
-  /* WORD CARDS */
   .word-list { padding: 0 1.2rem 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
-  .word-card { background: #1a1814; border: 1px solid #2a2820; border-radius: 4px; padding: 0.9rem 1rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.8rem; }
-  .word-main { flex: 1; min-width: 0; }
-  .word-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+  .word-card { background: #1a1814; border: 1px solid #2a2820; border-radius: 4px; padding: 0.9rem 1rem; }
+  .word-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.15rem; }
   .word-fr { font-size: 1rem; color: #f0e8d8; }
   .word-it { font-family: 'Source Code Pro', monospace; font-size: 0.73rem; color: #888; }
   .badge { font-family: 'Source Code Pro', monospace; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.1rem 0.35rem; border-radius: 3px; }
@@ -84,115 +61,91 @@
   .badge-informale { color: #d4a853; background: #d4a85311; }
   .badge-formale { color: #7eb8c9; background: #7eb8c911; }
   .badge-raro { color: #888; background: #88888811; }
-  .badge-cat { font-family: 'Source Code Pro', monospace; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; }
   .word-plural { font-family: 'Source Code Pro', monospace; font-size: 0.6rem; color: #666; }
   .word-feminine { font-family: 'Source Code Pro', monospace; font-size: 0.6rem; color: #c97eb8; }
   .word-example { font-style: italic; font-size: 0.78rem; color: #5a5248; margin-top: 0.2rem; }
   .word-date { font-family: 'Source Code Pro', monospace; font-size: 0.6rem; color: #2e2c28; margin-top: 0.25rem; }
-  .btn-del { background: none; border: none; cursor: pointer; color: #444; font-size: 0.9rem; padding: 0.2rem 0.3rem; border-radius: 3px; flex-shrink: 0; transition: color 0.2s; }
+  .word-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid #242018; }
+  .word-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem; }
+  .btn-del { background: none; border: none; cursor: pointer; color: #333; font-size: 0.85rem; padding: 0.1rem 0.3rem; border-radius: 3px; transition: color 0.2s; }
   .btn-del:hover { color: #c97e7e; }
-
-  /* EMPTY */
   .empty { text-align: center; padding: 3rem 1rem; color: #3a3628; }
   .empty-text { font-style: italic; font-size: 1rem; }
-
-  /* SEARCH */
   .search-field { background: #1a1814; border: 1px solid #2a2820; border-radius: 4px; padding: 0.45rem 0.8rem; color: #e8e0d0; font-family: 'Source Code Pro', monospace; font-size: 0.78rem; outline: none; width: 120px; }
   .search-field:focus { border-color: #7eb8c9; }
   .search-label { font-family: 'Source Code Pro', monospace; font-size: 0.68rem; color: #555; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.8rem; padding: 0 1.2rem; }
-
-  /* MODALS */
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
-  .modal { background: #1a1814; border: 1px solid #2a2820; border-radius: 6px; padding: 1.5rem; max-width: 420px; width: 100%; }
+  .modal { background: #1a1814; border: 1px solid #2a2820; border-radius: 6px; padding: 1.5rem; max-width: 420px; width: 100%; max-height: 85vh; overflow-y: auto; }
   .modal-title { font-size: 1.1rem; color: #e8e0d0; margin-bottom: 0.4rem; }
   .modal-subtitle { font-family: 'Source Code Pro', monospace; font-size: 0.7rem; color: #555; margin-bottom: 1.2rem; line-height: 1.6; }
   .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 0.8rem; }
-
-  /* SETTINGS */
+  .ai-result { background: #0f0e0c; border: 1px solid #2a2820; border-radius: 4px; padding: 0.8rem; margin-top: 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; color: #c8a84a; line-height: 1.7; white-space: pre-wrap; }
   .settings-row { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
   .settings-label { font-family: 'Source Code Pro', monospace; font-size: 0.68rem; color: #888; letter-spacing: 0.1em; text-transform: uppercase; }
-
-  /* TOAST */
   .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #1a1814; border: 1px solid #d4a853; color: #d4a853; padding: 0.6rem 1.3rem; border-radius: 4px; font-family: 'Source Code Pro', monospace; font-size: 0.78rem; z-index: 999; white-space: nowrap; animation: fadeUp 0.3s ease; pointer-events: none; }
   .toast.info { border-color: #7eb8c9; color: #7eb8c9; }
   .toast.error { border-color: #c97e7e; color: #c97e7e; }
   @keyframes fadeUp { from { opacity:0; transform: translateX(-50%) translateY(8px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
-
-  /* MAIN CONTENT AREA */
-  .content { padding: 1rem 1.2rem; }
 </style>
 </head>
 <body>
-
 <div id="app"></div>
-
 <script>
 const CATEGORIES = [
-  { id: "aggettivi",   label: "Aggettivi",   emoji: "✦", color: "#d4a853" },
-  { id: "espressioni", label: "Espressioni", emoji: "◈", color: "#7eb8c9" },
-  { id: "sostantivi",  label: "Sostantivi",  emoji: "◆", color: "#c97eb8" },
-  { id: "verbi",       label: "Verbi",       emoji: "▸", color: "#7ec9a0" },
-  { id: "avverbi",     label: "Avverbi",     emoji: "◉", color: "#c98e7e" },
-  { id: "altro",       label: "Altro",       emoji: "◌", color: "#9e9e9e" },
+  { id:"aggettivi",   label:"Aggettivi",   emoji:"✦", color:"#d4a853" },
+  { id:"espressioni", label:"Espressioni", emoji:"◈", color:"#7eb8c9" },
+  { id:"sostantivi",  label:"Sostantivi",  emoji:"◆", color:"#c97eb8" },
+  { id:"verbi",       label:"Verbi",       emoji:"▸", color:"#7ec9a0" },
+  { id:"avverbi",     label:"Avverbi",     emoji:"◉", color:"#c98e7e" },
+  { id:"altro",       label:"Altro",       emoji:"◌", color:"#9e9e9e" },
 ];
+const STORAGE_KEY   = "mon-vocabulaire-v1";
+const API_KEY_STORE = "mon-vocab-apikey";
 
-const STORAGE_KEY = "mon-vocabulaire-v1";
-const API_KEY_STORAGE = "mon-vocab-apikey";
-
-// ── STATE ──────────────────────────────────────────────
 let state = {
   vocab: { aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] },
   activeTab: "sostantivi",
-  mode: "fr",          // "fr" = dal francese, "it" = dall'italiano
+  mode: "fr",
   search: "",
   generating: false,
   warning: null,
   showImportExport: false,
   showSettings: false,
   showDeleteConfirm: null,
+  showWordModal: null,   // { word object, loading, result }
   importText: "",
   apiKey: "",
   form: { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"" },
-  itWord: "",          // campo inserimento italiano
+  itWord: "",
 };
 
-// ── PERSISTENCE ────────────────────────────────────────
+// ── PERSISTENCE
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) state.vocab = JSON.parse(raw);
-  } catch(e) {}
-  try {
-    const k = localStorage.getItem(API_KEY_STORAGE);
-    if (k) state.apiKey = k;
-  } catch(e) {}
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) state.vocab = JSON.parse(r); } catch(e){}
+  try { const k = localStorage.getItem(API_KEY_STORE); if (k) state.apiKey = k; } catch(e){}
 }
-
 function saveVocab() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.vocab)); } catch(e) {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.vocab)); } catch(e){}
 }
-
 function saveApiKey(k) {
-  try { localStorage.setItem(API_KEY_STORAGE, k); } catch(e) {}
+  try { localStorage.setItem(API_KEY_STORE, k); } catch(e){}
 }
 
-// ── TOAST ──────────────────────────────────────────────
+// ── TOAST
 let toastTimer = null;
 function showToast(msg, type="success") {
   clearTimeout(toastTimer);
   const old = document.getElementById("toast");
   if (old) old.remove();
   const t = document.createElement("div");
-  t.id = "toast";
-  t.className = "toast " + type;
-  t.textContent = msg;
+  t.id = "toast"; t.className = "toast " + type; t.textContent = msg;
   document.body.appendChild(t);
   toastTimer = setTimeout(() => t.remove(), 3000);
 }
 
-// ── API CALL ───────────────────────────────────────────
+// ── API
 async function callClaude(prompt) {
-  if (!state.apiKey) throw new Error("Chiave API mancante");
+  if (!state.apiKey) throw new Error("no-key");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -201,379 +154,343 @@ async function callClaude(prompt) {
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true"
     },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: prompt }]
-    })
+    body: JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens:1000, messages:[{role:"user",content:prompt}] })
   });
-  if (!res.ok) {
-    const err = await res.json().catch(()=>({}));
-    throw new Error(err?.error?.message || "Errore API " + res.status);
-  }
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || "API error " + res.status); }
   const data = await res.json();
-  const text = (data.content || []).map(b => b.text || "").join("");
-  const clean = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean);
+  return (data.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
 }
 
-// ── GENERATE FROM FRENCH ───────────────────────────────
+async function callClaudeJSON(prompt) {
+  const text = await callClaude(prompt);
+  return JSON.parse(text);
+}
+
+// ── GENERATE FROM FRENCH
 async function generateFromFrench() {
   const word = state.form.word.trim();
   if (!word || state.generating) return;
-  state.generating = true;
-  state.warning = null;
-  render();
-
+  state.generating = true; state.warning = null; render();
   try {
-    const catLabel = CATEGORIES.find(c => c.id === state.activeTab)?.label || state.activeTab;
-    const isSost = state.activeTab === "sostantivi";
-    const isAgg  = state.activeTab === "aggettivi";
-    const extraS = isSost ? '"gender": "maschile o femminile", "plural": "forma plurale francese",' : "";
-    const extraA = isAgg  ? '"feminine": "forma femminile aggettivo",' : "";
-    const prompt = 'Analizza la parola francese "' + word + '" che vuole essere inserita nella categoria "' + catLabel + '". Rispondi SOLO JSON senza markdown: { "spelling_ok": true/false, "spelling_correction": null o stringa, "category_ok": true/false, "suggested_category": null o stringa tra Aggettivi Espressioni Sostantivi Verbi Avverbi Altro, "translation": "traduzione italiana", ' + extraS + extraA + ' "usage": "comune|informale|formale|raro", "example1_fr": "frase1", "example2_fr": "frase2" }';
-
-    const p = await callClaude(prompt);
-
-    if (!p.spelling_ok && p.spelling_correction) {
-      state.warning = { type: "spelling", suggestion: p.spelling_correction };
-    } else if (!p.category_ok && p.suggested_category) {
-      state.warning = { type: "category", suggestion: p.suggested_category };
+    const catLabel = CATEGORIES.find(c=>c.id===state.activeTab)?.label || state.activeTab;
+    const isSost = state.activeTab==="sostantivi", isAgg = state.activeTab==="aggettivi";
+    const extraS = isSost ? '"gender":"maschile o femminile","plural":"plurale francese",' : "";
+    const extraA = isAgg  ? '"feminine":"forma femminile",' : "";
+    const p = await callClaudeJSON(
+      'Analizza la parola francese "'+word+'" da inserire in "'+catLabel+'". '+
+      'Rispondi SOLO JSON: {"spelling_ok":true/false,"spelling_correction":null,"category_ok":true/false,'+
+      '"suggested_category":null,"translation":"trad italiana",'+extraS+extraA+
+      '"usage":"comune|informale|formale|raro","example1_fr":"frase1","example2_fr":"frase2"}'
+    );
+    // auto-switch category if wrong
+    if (!p.category_ok && p.suggested_category) {
+      const match = CATEGORIES.find(c => c.label.toLowerCase() === p.suggested_category.toLowerCase());
+      if (match) { state.activeTab = match.id; state.warning = { type:"category", suggestion: p.suggested_category }; }
+      else state.warning = { type:"category", suggestion: p.suggested_category };
     }
-
-    state.form = {
-      ...state.form,
+    if (!p.spelling_ok && p.spelling_correction) state.warning = { type:"spelling", suggestion: p.spelling_correction };
+    state.form = { ...state.form,
       translation: p.translation || state.form.translation,
-      gender:      p.gender      || state.form.gender   || "",
-      plural:      p.plural      || state.form.plural    || "",
-      feminine:    p.feminine    || state.form.feminine  || "",
-      usage:       p.usage       || state.form.usage     || "",
-      example:     [p.example1_fr, p.example2_fr].filter(Boolean).join(" — "),
+      gender:   p.gender   || "", plural:   p.plural   || "",
+      feminine: p.feminine || "", usage:    p.usage    || "",
+      example:  [p.example1_fr, p.example2_fr].filter(Boolean).join(" — "),
     };
     showToast("Informazioni generate!");
   } catch(e) {
-    const msg = !state.apiKey ? "⚙ Inserisci la chiave API nelle impostazioni" : "Errore: " + (e.message || "generazione fallita");
-    showToast(msg, "error");
+    showToast(e.message==="no-key" ? "⚙ Inserisci la chiave API nelle impostazioni" : "Errore: "+(e.message||"generazione fallita"), "error");
   }
-
-  state.generating = false;
-  render();
+  state.generating = false; render();
 }
 
-// ── GENERATE FROM ITALIAN ──────────────────────────────
+// ── GENERATE FROM ITALIAN
 async function generateFromItalian() {
   const word = state.itWord.trim();
   if (!word || state.generating) return;
-  state.generating = true;
-  state.warning = null;
-  render();
-
+  state.generating = true; state.warning = null; render();
   try {
-    const prompt = 'Traduci la parola o espressione italiana "' + word + '" in francese. Rispondi SOLO JSON senza markdown: { "word_fr": "parola/espressione in francese", "translation": "traduzione italiana confermata", "category": "una tra: aggettivi, espressioni, sostantivi, verbi, avverbi, altro", "gender": "maschile o femminile solo se sostantivo altrimenti null", "plural": "plurale francese solo se sostantivo altrimenti null", "feminine": "forma femminile solo se aggettivo altrimenti null", "usage": "comune|informale|formale|raro", "example1_fr": "frase di esempio in francese", "example2_fr": "seconda frase di esempio in francese" }';
-
-    const p = await callClaude(prompt);
-
-    // Switch to correct category
-    if (p.category && CATEGORIES.find(c => c.id === p.category)) {
-      state.activeTab = p.category;
-    }
-
-    state.form = {
-      word:        p.word_fr     || "",
-      translation: p.translation || word,
-      gender:      p.gender      || "",
-      plural:      p.plural      || "",
-      feminine:    p.feminine    || "",
-      usage:       p.usage       || "",
-      example:     [p.example1_fr, p.example2_fr].filter(Boolean).join(" — "),
-    };
-    showToast("Traduzione completata! Controlla e premi Aggiungi.");
+    const p = await callClaudeJSON(
+      'Traduci "'+word+'" italiano→francese. SOLO JSON: {"word_fr":"","translation":"","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro",'+
+      '"gender":null,"plural":null,"feminine":null,"usage":"comune|informale|formale|raro","example1_fr":"","example2_fr":""}'
+    );
+    if (p.category && CATEGORIES.find(c=>c.id===p.category)) state.activeTab = p.category;
+    state.form = { word:p.word_fr||"", translation:p.translation||word, gender:p.gender||"", plural:p.plural||"", feminine:p.feminine||"", usage:p.usage||"", example:[p.example1_fr,p.example2_fr].filter(Boolean).join(" — ") };
+    showToast("Traduzione pronta! Rivedi e premi Aggiungi.");
   } catch(e) {
-    const msg2 = !state.apiKey ? "⚙ Inserisci la chiave API nelle impostazioni" : "Errore: " + (e.message || "traduzione fallita");
-    showToast(msg2, "error");
+    showToast(e.message==="no-key" ? "⚙ Inserisci la chiave API nelle impostazioni" : "Errore: "+(e.message||"traduzione fallita"), "error");
   }
-
-  state.generating = false;
-  render();
+  state.generating = false; render();
 }
 
-// ── ADD WORD ───────────────────────────────────────────
+// ── ADD WORD
 function addWord() {
-  const word = state.form.word.trim();
-  if (!word) return;
-  const entry = {
-    id: Date.now(),
-    word,
-    translation: state.form.translation.trim(),
-    gender:      state.form.gender.trim(),
-    plural:      state.form.plural.trim(),
-    feminine:    state.form.feminine.trim(),
-    usage:       state.form.usage.trim(),
-    example:     state.form.example.trim(),
-    addedAt:     new Date().toLocaleDateString("it-IT"),
-  };
+  if (!state.form.word.trim()) return;
+  const entry = { id:Date.now(), ...Object.fromEntries(Object.entries(state.form).map(([k,v])=>[k,v.trim()])), addedAt:new Date().toLocaleDateString("it-IT") };
   state.vocab[state.activeTab].push(entry);
   saveVocab();
-  state.form    = { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"" };
-  state.itWord  = "";
-  state.warning = null;
-  showToast('"' + entry.word + '" aggiunto!');
+  state.form = { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"" };
+  state.itWord = ""; state.warning = null;
+  showToast('"'+entry.word+'" aggiunto!');
   render();
 }
 
+// ── DELETE WORD
 function deleteWord(catId, wordId) {
-  state.vocab[catId] = state.vocab[catId].filter(w => w.id !== wordId);
-  saveVocab();
-  state.showDeleteConfirm = null;
-  showToast("Parola rimossa", "info");
+  state.vocab[catId] = state.vocab[catId].filter(w=>w.id!==wordId);
+  saveVocab(); state.showDeleteConfirm = null;
+  showToast("Parola rimossa","info"); render();
+}
+
+// ── WORD ACTIONS (AI on existing word)
+async function wordAction(action, wordId) {
+  const w = findWord(wordId);
+  if (!w) return;
+  state.showWordModal = { word:w, action, loading:true, result:"" };
   render();
-}
-
-// ── IMPORT / EXPORT ────────────────────────────────────
-function exportVocab() {
-  const json = JSON.stringify(state.vocab, null, 2);
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(json)
-      .then(() => showToast("Lista copiata negli appunti!"))
-      .catch(() => { document.getElementById("importtextarea").value = json; showToast("Copia il testo qui sotto", "info"); });
-  } else {
-    document.getElementById("importtextarea").value = json;
-    showToast("Copia il testo qui sotto", "info");
-  }
-}
-
-function importVocab() {
   try {
-    const parsed = JSON.parse(state.importText);
-    const valid = CATEGORIES.every(c => Array.isArray(parsed[c.id]));
-    if (!valid) throw new Error();
-    state.vocab = parsed;
-    saveVocab();
-    state.importText = "";
-    state.showImportExport = false;
-    const total = Object.values(parsed).reduce((s,a) => s+a.length, 0);
-    showToast(total + " parole importate!");
+    const prompts = {
+      sinonimo:  'Dammi 3 sinonimi francesi di "'+w.word+'" con traduzione italiana. Rispondi in testo semplice, una riga per sinonimo: parola — traduzione.',
+      contrario: 'Dammi 2-3 contrari francesi di "'+w.word+'" con traduzione italiana. Rispondi in testo semplice, una riga per contrario: parola — traduzione.',
+      esempi:    'Dammi 3 nuovi esempi d\'uso in francese di "'+w.word+'", diversi da quelli che già conosce. Solo le frasi, una per riga.',
+      correggi:  'La parola/traduzione francese è "'+w.word+'" = "'+w.translation+'". Categoria: "'+w.cat+'". È tutto corretto? Segnala eventuali errori e suggerisci correzioni. Risposta breve e diretta.',
+    };
+    const result = await callClaude(prompts[action]);
+    state.showWordModal = { word:w, action, loading:false, result };
     render();
   } catch(e) {
-    showToast("Dati non validi", "error");
+    state.showWordModal = { word:w, action, loading:false, result: e.message==="no-key" ? "⚙ Inserisci la chiave API nelle impostazioni." : "Errore: "+e.message };
+    render();
   }
 }
 
-// ── HELPERS ────────────────────────────────────────────
-function totalWords() {
-  return Object.values(state.vocab).reduce((s,a) => s+a.length, 0);
+function findWord(wordId) {
+  for (const cat of Object.values(state.vocab)) {
+    const w = cat.find(w=>w.id===wordId);
+    if (w) return w;
+  }
 }
 
+// ── IMPORT / EXPORT
+function exportVocab() {
+  const json = JSON.stringify(state.vocab, null, 2);
+  if (navigator.clipboard?.writeText)
+    navigator.clipboard.writeText(json).then(()=>showToast("Lista copiata!")).catch(()=>{ document.getElementById("importtextarea").value=json; showToast("Copia il testo qui sotto","info"); });
+  else { document.getElementById("importtextarea").value=json; showToast("Copia il testo qui sotto","info"); }
+}
+function importVocab() {
+  try {
+    const p = JSON.parse(state.importText);
+    if (!CATEGORIES.every(c=>Array.isArray(p[c.id]))) throw new Error();
+    state.vocab=p; saveVocab(); state.importText=""; state.showImportExport=false;
+    showToast(Object.values(p).reduce((s,a)=>s+a.length,0)+" parole importate!"); render();
+  } catch(e) { showToast("Dati non validi","error"); }
+}
+
+// ── HELPERS
+function totalWords() { return Object.values(state.vocab).reduce((s,a)=>s+a.length,0); }
 function filteredWords() {
   const q = state.search.toLowerCase();
-  if (q) {
-    return Object.entries(state.vocab).flatMap(([cat, words]) =>
-      words.filter(w => w.word.toLowerCase().includes(q) || w.translation.toLowerCase().includes(q))
-           .map(w => ({...w, cat}))
-    );
-  }
-  return state.vocab[state.activeTab].map(w => ({...w, cat: state.activeTab}));
+  if (q) return Object.entries(state.vocab).flatMap(([cat,ws])=>ws.filter(w=>w.word.toLowerCase().includes(q)||w.translation.toLowerCase().includes(q)).map(w=>({...w,cat})));
+  return state.vocab[state.activeTab].map(w=>({...w,cat:state.activeTab}));
 }
-
 function usageBadge(u) {
   if (!u) return "";
-  const map = { comune:"badge-comune ● comune", informale:"badge-informale ◐ informale", formale:"badge-formale ◈ formale", raro:"badge-raro ○ raro" };
-  const parts = (map[u] || "badge-raro " + u).split(" ");
-  return '<span class="badge ' + parts[0] + '">' + parts.slice(1).join(" ") + '</span>';
+  const map = {comune:["#7ec9a0","#7ec9a011","● comune"],informale:["#d4a853","#d4a85311","◐ informale"],formale:["#7eb8c9","#7eb8c911","◈ formale"],raro:["#888","#88888811","○ raro"]};
+  const [c,bg,label] = map[u]||["#888","#88888811",u];
+  return '<span class="badge" style="color:'+c+';background:'+bg+'">'+label+'</span>';
+}
+function esc(s) {
+  if (!s) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function actionLabel(a) {
+  return {sinonimo:"💬 Sinonimi", contrario:"↔ Contrari", esempi:"📖 Altri esempi", correggi:"✓ Verifica"}[a]||a;
 }
 
-// ── RENDER ─────────────────────────────────────────────
+// ── RENDER
 function render() {
-  const app = document.getElementById("app");
   const total = totalWords();
-  const activeCat = CATEGORIES.find(c => c.id === state.activeTab);
+  const activeCat = CATEGORIES.find(c=>c.id===state.activeTab);
   const words = filteredWords();
-
   let html = "";
 
-  // ── HEADER
-  html += '<div class="header">';
-  html += '<div class="header-top">';
-  html += '<div><div class="app-title">Mon Vocabulaire</div><div class="app-subtitle">' + total + ' ' + (total===1?"parola":"parole") + ' salvate</div></div>';
+  // HEADER
+  html += '<div class="header"><div class="header-top">';
+  html += '<div><div class="app-title">Mon Vocabulaire</div><div class="app-subtitle">'+total+' '+(total===1?"parola":"parole")+' salvate</div></div>';
   html += '<div class="header-actions">';
-  html += '<input class="search-field" id="searchInput" type="text" placeholder="cerca…" value="' + esc(state.search) + '" oninput="state.search=this.value;render()">';
+  html += '<input class="search-field" type="text" placeholder="cerca…" value="'+esc(state.search)+'" oninput="state.search=this.value;render()" >';
   html += '<button class="btn-icon" onclick="state.showImportExport=true;render()">⇅ Salva/Carica</button>';
   html += '<button class="btn-icon" onclick="state.showSettings=true;render()">⚙</button>';
   html += '</div></div></div>';
 
-  // ── TABS (hidden during search)
+  // TABS
   if (!state.search) {
     html += '<div class="tabs">';
     CATEGORIES.forEach(cat => {
       const cnt = state.vocab[cat.id].length;
-      const active = cat.id === state.activeTab ? " active" : "";
-      html += '<button class="tab' + active + '" style="color:' + (active ? cat.color : "#555") + '" onclick="state.activeTab=\'' + cat.id + '\';state.warning=null;render()">';
-      html += cat.emoji + " " + cat.label;
-      if (cnt > 0) html += '<span class="tab-count">(' + cnt + ')</span>';
-      html += '</button>';
+      const active = cat.id===state.activeTab?" active":"";
+      html += '<button class="tab'+active+'" style="color:'+(active?cat.color:"#555")+'" onclick="state.activeTab=\''+cat.id+'\';state.warning=null;render()">';
+      html += cat.emoji+" "+cat.label+(cnt>0?'<span class="tab-count">('+cnt+')</span>':""+'')+'</button>';
     });
     html += '</div>';
   }
 
-  // ── FORM
+  // FORM
   if (!state.search) {
-    html += '<div class="content">';
-
-    // Mode toggle
+    html += '<div style="padding:1rem 1.2rem">';
+    // mode toggle
     html += '<div class="mode-toggle">';
-    html += '<button class="mode-btn' + (state.mode==="fr"?" active":"") + '" onclick="state.mode=\'fr\';state.warning=null;render()">🇫🇷 Inserisci in francese</button>';
-    html += '<button class="mode-btn' + (state.mode==="it"?" active":"") + '" onclick="state.mode=\'it\';state.warning=null;render()">🇮🇹 Inserisci in italiano</button>';
+    html += '<button class="mode-btn'+(state.mode==="fr"?" active":"")+'" onclick="state.mode=\'fr\';state.warning=null;render()">🇫🇷 Inserisci in francese</button>';
+    html += '<button class="mode-btn'+(state.mode==="it"?" active":"")+'" onclick="state.mode=\'it\';state.warning=null;render()">🇮🇹 Inserisci in italiano</button>';
     html += '</div>';
-
     html += '<div class="form-box">';
-    html += '<div class="form-label" style="color:' + activeCat.color + '">' + activeCat.emoji + ' Aggiungi a ' + activeCat.label + '</div>';
+    html += '<div class="form-label" style="color:'+activeCat.color+'">'+activeCat.emoji+' Aggiungi a '+activeCat.label+'</div>';
 
-    if (state.mode === "it") {
-      // ── MODALITÀ ITALIANO
+    if (state.mode==="it") {
+      // Italian mode — NO render() on oninput, use onblur to update button state via CSS trick
       html += '<div class="form-row">';
-      html += '<input class="field" id="itWordInput" type="text" placeholder="Parola o frase in italiano *" value="' + esc(state.itWord) + '" oninput="state.itWord=this.value;render()" onkeydown="if(event.key===\'Enter\')generateFromItalian()">';
-      html += '<button class="btn-generate" onclick="generateFromItalian()" ' + (!state.itWord.trim()||state.generating?"disabled":"") + '>';
+      html += '<input class="field" id="itWordInput" type="text" placeholder="Parola o frase in italiano *" value="'+esc(state.itWord)+'"'
+            + ' oninput="state.itWord=this.value;document.getElementById(\'btnGenIt\').disabled=!this.value.trim()||'+state.generating+'"'
+            + ' onkeydown="if(event.key===\'Enter\')generateFromItalian()">';
+      html += '<button id="btnGenIt" class="btn-generate" onclick="generateFromItalian()" '+((!state.itWord.trim()||state.generating)?"disabled":"")+' >';
       html += state.generating ? '<span class="spinner"></span> …' : '✨ Traduci';
       html += '</button></div>';
-      if (state.form.word) {
-        html += '<div style="font-family:\'Source Code Pro\',monospace;font-size:0.68rem;color:#555;margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:#1e1c18;border-radius:4px;">Risultato → rivedi i campi qui sotto e premi Aggiungi</div>';
-      }
+      if (state.form.word) html += '<div style="font-family:\'Source Code Pro\',monospace;font-size:0.68rem;color:#555;margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:#1e1c18;border-radius:4px;">Risultato → rivedi i campi e premi Aggiungi</div>';
     } else {
-      // ── MODALITÀ FRANCESE
+      // French mode
       html += '<div class="form-row">';
-      html += '<input class="field" id="frWordInput" type="text" placeholder="Parola francese *" value="' + esc(state.form.word) + '" oninput="state.form.word=this.value;state.warning=null;render()" onkeydown="if(event.key===\'Enter\')addWord()">';
-      html += '<button class="btn-generate" onclick="generateFromFrench()" ' + (!state.form.word.trim()||state.generating?"disabled":"") + '>';
+      html += '<input class="field" id="frWordInput" type="text" placeholder="Parola francese *" value="'+esc(state.form.word)+'"'
+            + ' oninput="state.form.word=this.value;state.warning=null;document.getElementById(\'btnGenFr\').disabled=!this.value.trim()||'+state.generating+'"'
+            + ' onkeydown="if(event.key===\'Enter\')addWord()">';
+      html += '<button id="btnGenFr" class="btn-generate" onclick="generateFromFrench()" '+((!state.form.word.trim()||state.generating)?"disabled":"")+' >';
       html += state.generating ? '<span class="spinner"></span> …' : '✨ Genera';
       html += '</button></div>';
     }
 
     // Warning
     if (state.warning) {
-      const wc = state.warning.type === "spelling" ? "warning-spelling" : "warning-category";
-      const wl = state.warning.type === "spelling" ? "warning-label-spelling" : "warning-label-category";
-      const icon = state.warning.type === "spelling" ? "⚠️" : "💡";
-      const label = state.warning.type === "spelling" ? "Possibile errore:" : "Categoria consigliata:";
-      html += '<div class="warning-box ' + wc + '">';
-      html += '<span>' + icon + '</span>';
-      html += '<div class="warning-text"><span class="' + wl + '">' + label + ' </span>';
-      html += '<em>' + esc(state.warning.suggestion) + '</em>';
-      if (state.warning.type === "spelling") {
-        html += '<button class="btn-use-correction" onclick="state.form.word=\'' + esc(state.warning.suggestion) + '\';state.warning=null;render()">Usa questa</button>';
-      }
+      const isSp = state.warning.type==="spelling";
+      html += '<div class="warning-box '+(isSp?"warning-spelling":"warning-category")+'">';
+      html += '<span>'+(isSp?"⚠️":"💡")+'</span><div class="warning-text">';
+      html += '<span style="color:'+(isSp?"#c98e7e":"#7eb8c9")+';text-transform:uppercase;letter-spacing:0.1em">'+(isSp?"Possibile errore:":"Categoria consigliata:")+' </span>';
+      html += '<em>'+esc(state.warning.suggestion)+'</em>';
+      if (isSp) html += '<button class="btn-use-correction" onclick="state.form.word=\''+esc(state.warning.suggestion)+'\';state.warning=null;render()">Usa questa</button>';
       html += '</div></div>';
     }
 
-    // Common fields
-    html += '<input class="field" style="margin-bottom:0.5rem" type="text" placeholder="Traduzione italiana" value="' + esc(state.form.translation) + '" oninput="state.form.translation=this.value" onkeydown="if(event.key===\'Enter\')addWord()">';
-
-    if (state.activeTab === "sostantivi") {
+    html += '<input class="field" style="margin-bottom:0.5rem" type="text" placeholder="Traduzione italiana" value="'+esc(state.form.translation)+'" oninput="state.form.translation=this.value">';
+    if (state.activeTab==="sostantivi") {
       html += '<div class="form-grid">';
-      html += '<input class="field" type="text" placeholder="Genere (maschile/femminile)" value="' + esc(state.form.gender) + '" oninput="state.form.gender=this.value">';
-      html += '<input class="field" type="text" placeholder="Plurale (es. voisins)" value="' + esc(state.form.plural) + '" oninput="state.form.plural=this.value">';
+      html += '<input class="field" type="text" placeholder="Genere" value="'+esc(state.form.gender)+'" oninput="state.form.gender=this.value">';
+      html += '<input class="field" type="text" placeholder="Plurale" value="'+esc(state.form.plural)+'" oninput="state.form.plural=this.value">';
       html += '</div>';
     }
-    if (state.activeTab === "aggettivi") {
-      html += '<input class="field" style="margin-bottom:0.5rem" type="text" placeholder="Forma femminile (es. belle)" value="' + esc(state.form.feminine) + '" oninput="state.form.feminine=this.value">';
+    if (state.activeTab==="aggettivi") {
+      html += '<input class="field" style="margin-bottom:0.5rem" type="text" placeholder="Forma femminile" value="'+esc(state.form.feminine)+'" oninput="state.form.feminine=this.value">';
     }
-
     html += '<div class="form-row">';
-    html += '<input class="field" type="text" placeholder="Esempi d\'uso" value="' + esc(state.form.example) + '" oninput="state.form.example=this.value" onkeydown="if(event.key===\'Enter\')addWord()">';
-    html += '<button class="btn-add" onclick="addWord()" ' + (!state.form.word.trim()?"disabled":"") + '>+ Aggiungi</button>';
+    html += '<input class="field" type="text" placeholder="Esempi d\'uso" value="'+esc(state.form.example)+'" oninput="state.form.example=this.value" onkeydown="if(event.key===\'Enter\')addWord()">';
+    html += '<button class="btn-add" onclick="addWord()" '+(!state.form.word.trim()?"disabled":"")+'>+ Aggiungi</button>';
     html += '</div>';
-
-    html += '</div></div>'; // form-box + content
+    html += '</div></div>';
   }
 
-  // ── WORD LIST
-  if (state.search) {
-    html += '<div class="search-label">' + words.length + ' risultat' + (words.length===1?"o":"i") + ' per "' + esc(state.search) + '"</div>';
-  }
+  // SEARCH LABEL
+  if (state.search) html += '<div class="search-label">'+words.length+' risultat'+(words.length===1?"o":"i")+' per "'+esc(state.search)+'"</div>';
 
-  if (words.length === 0) {
-    html += '<div class="empty"><div class="empty-text">' + (state.search ? "Nessun risultato" : "Ancora nessuna parola") + '</div></div>';
+  // WORD LIST
+  if (words.length===0) {
+    html += '<div class="empty"><div class="empty-text">'+(state.search?"Nessun risultato":"Ancora nessuna parola")+'</div></div>';
   } else {
     html += '<div class="word-list">';
     words.forEach(w => {
-      const cat = CATEGORIES.find(c => c.id === w.cat);
+      const cat = CATEGORIES.find(c=>c.id===w.cat);
       const examples = w.example ? w.example.split(" — ").filter(Boolean) : [];
       html += '<div class="word-card">';
-      html += '<div class="word-main">';
       html += '<div class="word-head">';
-      html += '<span class="word-fr">' + esc(w.word) + '</span>';
-      if (w.translation) html += '<span class="word-it">— ' + esc(w.translation) + '</span>';
-      if (w.gender) html += '<span class="badge ' + (w.gender==="femminile"?"badge-f":"badge-m") + '">' + (w.gender==="femminile"?"♀ f.":"♂ m.") + '</span>';
-      if (w.plural)   html += '<span class="word-plural">pl. <em>' + esc(w.plural) + '</em></span>';
-      if (w.feminine) html += '<span class="word-feminine">♀ <em>' + esc(w.feminine) + '</em></span>';
+      html += '<span class="word-fr">'+esc(w.word)+'</span>';
+      if (w.translation) html += '<span class="word-it">— '+esc(w.translation)+'</span>';
+      if (w.gender) html += '<span class="badge '+(w.gender==="femminile"?"badge-f":"badge-m")+'">'+(w.gender==="femminile"?"♀ f.":"♂ m.")+'</span>';
+      if (w.plural)   html += '<span class="word-plural">pl. <em>'+esc(w.plural)+'</em></span>';
+      if (w.feminine) html += '<span class="word-feminine">♀ <em>'+esc(w.feminine)+'</em></span>';
       if (w.usage)    html += usageBadge(w.usage);
-      if (state.search && cat) html += '<span class="badge-cat" style="color:' + cat.color + '">' + cat.emoji + ' ' + cat.label + '</span>';
+      if (state.search && cat) html += '<span class="badge" style="color:'+cat.color+'">'+cat.emoji+' '+cat.label+'</span>';
       html += '</div>';
-      examples.forEach(ex => { html += '<div class="word-example">« ' + esc(ex) + ' »</div>'; });
-      html += '<div class="word-date">' + esc(w.addedAt) + '</div>';
+      examples.forEach(ex => { html += '<div class="word-example">« '+esc(ex)+' »</div>'; });
+      // action bar + delete
+      html += '<div class="word-footer">';
+      html += '<div class="word-actions">';
+      ['sinonimo','contrario','esempi','correggi'].forEach(a => {
+        html += '<button class="btn-action" onclick="wordAction(\''+a+'\','+w.id+')">'+actionLabel(a)+'</button>';
+      });
       html += '</div>';
-      html += '<button class="btn-del" onclick="state.showDeleteConfirm={catId:\'' + w.cat + '\',wordId:' + w.id + ',word:\'' + esc(w.word) + '\'};render()">✕</button>';
+      html += '<button class="btn-del" onclick="state.showDeleteConfirm={catId:\''+w.cat+'\',wordId:'+w.id+',word:\''+esc(w.word)+'\'};render()">✕</button>';
+      html += '</div>';
+      html += '<div class="word-date">'+esc(w.addedAt)+'</div>';
       html += '</div>';
     });
     html += '</div>';
   }
 
-  // ── IMPORT/EXPORT MODAL
+  // WORD ACTION MODAL
+  if (state.showWordModal) {
+    const m = state.showWordModal;
+    html += '<div class="overlay" onclick="state.showWordModal=null;render()">';
+    html += '<div class="modal" onclick="event.stopPropagation()">';
+    html += '<div class="modal-title">'+actionLabel(m.action)+'</div>';
+    html += '<div class="modal-subtitle" style="margin-bottom:0.4rem">'+esc(m.word.word)+(m.word.translation?' — '+esc(m.word.translation):'')+'</div>';
+    if (m.loading) {
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c8a84a;font-family:\'Source Code Pro\',monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner"></span> Sto chiedendo a Claude…</div>';
+    } else {
+      html += '<div class="ai-result">'+esc(m.result)+'</div>';
+    }
+    html += '<div class="modal-actions"><button class="btn-add" onclick="state.showWordModal=null;render()">Chiudi</button></div>';
+    html += '</div></div>';
+  }
+
+  // IMPORT/EXPORT MODAL
   if (state.showImportExport) {
     html += '<div class="overlay" onclick="state.showImportExport=false;render()">';
     html += '<div class="modal" onclick="event.stopPropagation()">';
     html += '<div class="modal-title">Salva / Carica lista</div>';
     html += '<div class="modal-subtitle"><span style="color:#7eb8c9">Esporta:</span> copia e salva nelle Note del telefono.<br><span style="color:#7ec9a0">Importa:</span> incolla il testo salvato e premi Carica.</div>';
-    html += '<button class="btn-add" style="width:100%;margin-bottom:1rem" onclick="exportVocab()">📋 Copia lista (' + total + ' parole)</button>';
-    html += '<textarea class="field" id="importtextarea" style="min-height:100px;font-size:0.7rem;color:#7eb8c9" placeholder="Incolla qui il JSON salvato…" oninput="state.importText=this.value">' + esc(state.importText) + '</textarea>';
+    html += '<button class="btn-add" style="width:100%;margin-bottom:1rem" onclick="exportVocab()">📋 Copia lista ('+total+' parole)</button>';
+    html += '<textarea class="field" id="importtextarea" style="min-height:100px;font-size:0.7rem;color:#7eb8c9" placeholder="Incolla qui il JSON salvato…" oninput="state.importText=this.value">'+esc(state.importText)+'</textarea>';
     html += '<div class="modal-actions">';
     html += '<button class="btn-ghost" onclick="state.showImportExport=false;render()">Chiudi</button>';
-    html += '<button class="btn-import" style="background:' + (state.importText.trim()?"#7ec9a0":"#333") + ';color:' + (state.importText.trim()?"#0f0e0c":"#666") + '" onclick="importVocab()" ' + (!state.importText.trim()?"disabled":"") + '>↑ Carica lista</button>';
+    html += '<button class="btn-import" style="background:'+(state.importText.trim()?"#7ec9a0":"#333")+';color:'+(state.importText.trim()?"#0f0e0c":"#666")+'" onclick="importVocab()" '+(state.importText.trim()?"":"disabled")+'>↑ Carica lista</button>';
     html += '</div></div></div>';
   }
 
-  // ── SETTINGS MODAL
+  // SETTINGS MODAL
   if (state.showSettings) {
     html += '<div class="overlay" onclick="state.showSettings=false;render()">';
     html += '<div class="modal" onclick="event.stopPropagation()">';
     html += '<div class="modal-title">Impostazioni</div>';
-    html += '<div class="modal-subtitle">Inserisci la tua chiave API Anthropic per abilitare la generazione automatica di traduzioni ed esempi.</div>';
-    html += '<div class="settings-row">';
-    html += '<div class="settings-label">Chiave API (sk-ant-...)</div>';
-    html += '<input class="field" type="password" placeholder="sk-ant-api03-..." value="' + esc(state.apiKey) + '" oninput="state.apiKey=this.value;saveApiKey(this.value)">';
+    html += '<div class="modal-subtitle">Inserisci la tua chiave API Anthropic per la generazione automatica.</div>';
+    html += '<div class="settings-row"><div class="settings-label">Chiave API (sk-ant-...)</div>';
+    html += '<input class="field" type="password" placeholder="sk-ant-api03-..." value="'+esc(state.apiKey)+'" oninput="state.apiKey=this.value;saveApiKey(this.value)">';
     html += '</div>';
-    html += '<div style="font-family:\'Source Code Pro\',monospace;font-size:0.65rem;color:#444;line-height:1.6;margin-bottom:1rem">Ottienila su console.anthropic.com — salvata automaticamente sul tuo telefono.</div>';
-    html += '<div class="modal-actions">';
-    html += '<button class="btn-add" onclick="state.showSettings=false;render()">Chiudi</button>';
-    html += '</div></div></div>';
+    html += '<div style="font-family:\'Source Code Pro\',monospace;font-size:0.65rem;color:#444;line-height:1.6;margin-bottom:1rem">Ottienila su console.anthropic.com — salvata automaticamente sul telefono.</div>';
+    html += '<div class="modal-actions"><button class="btn-add" onclick="state.showSettings=false;render()">Chiudi</button></div>';
+    html += '</div></div>';
   }
 
-  // ── DELETE CONFIRM MODAL
+  // DELETE MODAL
   if (state.showDeleteConfirm) {
     const d = state.showDeleteConfirm;
     html += '<div class="overlay" onclick="state.showDeleteConfirm=null;render()">';
     html += '<div class="modal" onclick="event.stopPropagation()">';
     html += '<div class="modal-title">Elimina parola?</div>';
-    html += '<div class="modal-subtitle">Rimuovi <span style="color:#d4a853">"' + esc(d.word) + '"</span>?</div>';
+    html += '<div class="modal-subtitle">Rimuovi <span style="color:#d4a853">"'+esc(d.word)+'"</span>?</div>';
     html += '<div class="modal-actions">';
     html += '<button class="btn-ghost" onclick="state.showDeleteConfirm=null;render()">Annulla</button>';
-    html += '<button class="btn-danger" onclick="deleteWord(\'' + d.catId + '\',' + d.wordId + ')">Elimina</button>';
+    html += '<button class="btn-danger" onclick="deleteWord(\''+d.catId+'\','+d.wordId+')">Elimina</button>';
     html += '</div></div></div>';
   }
 
-  app.innerHTML = html;
-
-  // Restore focus hints
-  if (!state.search) {
-    const fi = document.getElementById(state.mode==="it" ? "itWordInput" : "frWordInput");
-    // don't steal focus on re-render
-  }
+  document.getElementById("app").innerHTML = html;
 }
 
-function esc(s) {
-  if (!s) return "";
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
-}
-
-// ── BOOT ───────────────────────────────────────────────
 loadState();
 render();
 </script>
