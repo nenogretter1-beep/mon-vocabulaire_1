@@ -82,6 +82,7 @@
   .ai-result { background: #0f0e0c; border: 1px solid #2a2820; border-radius: 4px; padding: 0.8rem; margin-top: 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; color: #c8a84a; line-height: 1.7; white-space: pre-wrap; }
   .settings-row { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
   .settings-label { font-family: 'Source Code Pro', monospace; font-size: 0.68rem; color: #888; letter-spacing: 0.1em; text-transform: uppercase; }
+  .btn-export-list { background: #1a1814; border: 1px solid #2a2820; color: #7ec9a0; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
   .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #1a1814; border: 1px solid #d4a853; color: #d4a853; padding: 0.6rem 1.3rem; border-radius: 4px; font-family: 'Source Code Pro', monospace; font-size: 0.78rem; z-index: 999; white-space: nowrap; animation: fadeUp 0.3s ease; pointer-events: none; }
   .toast.info { border-color: #7eb8c9; color: #7eb8c9; }
   .toast.error { border-color: #c97e7e; color: #c97e7e; }
@@ -306,6 +307,92 @@ function actionLabel(a) {
   return {sinonimo:"💬 Sinonimi", contrario:"↔ Contrari", esempi:"📖 Altri esempi", correggi:"✓ Verifica"}[a]||a;
 }
 
+// ── DOWNLOAD LIST
+function downloadList() {
+  const total = Object.values(state.vocab).reduce((s,a)=>s+a.length,0);
+  if (total === 0) { showToast("Nessuna parola da esportare", "info"); return; }
+
+  const usageMap = {comune:"● comune", informale:"◐ informale", formale:"◈ formale", raro:"○ raro"};
+
+  let html = `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mon Vocabulaire — Lista</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@300;400&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0e0c; color: #e8e0d0; font-family: 'Playfair Display', Georgia, serif; padding: 2rem 1.2rem; max-width: 700px; margin: 0 auto; }
+  h1 { font-size: 2rem; font-weight: 400; margin-bottom: 0.3rem; }
+  .subtitle { font-family: 'Source Code Pro', monospace; font-size: 0.7rem; color: #555; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 2.5rem; }
+  .category { margin-bottom: 2.5rem; }
+  .cat-title { font-family: 'Source Code Pro', monospace; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; padding-bottom: 0.5rem; border-bottom: 1px solid #2a2820; margin-bottom: 1rem; }
+  .word-entry { padding: 0.8rem 0; border-bottom: 1px solid #1a1814; }
+  .word-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.2rem; }
+  .word-fr { font-size: 1.05rem; color: #f0e8d8; }
+  .word-it { font-family: 'Source Code Pro', monospace; font-size: 0.75rem; color: #888; }
+  .badge { font-family: 'Source Code Pro', monospace; font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.1rem 0.35rem; border-radius: 3px; }
+  .badge-m { color: #7eb8c9; background: #7eb8c911; }
+  .badge-f { color: #c97eb8; background: #c97eb811; }
+  .badge-comune { color: #7ec9a0; background: #7ec9a011; }
+  .badge-informale { color: #d4a853; background: #d4a85311; }
+  .badge-formale { color: #7eb8c9; background: #7eb8c911; }
+  .badge-raro { color: #888; background: #88888811; }
+  .word-extra { font-family: 'Source Code Pro', monospace; font-size: 0.65rem; color: #666; margin-top: 0.15rem; }
+  .word-example { font-style: italic; font-size: 0.8rem; color: #5a5248; margin-top: 0.2rem; }
+  .footer { font-family: 'Source Code Pro', monospace; font-size: 0.62rem; color: #333; margin-top: 3rem; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+<h1>Mon Vocabulaire</h1>
+<div class="subtitle">${total} parole · ${new Date().toLocaleDateString('it-IT')}</div>
+`;
+
+  CATEGORIES.forEach(cat => {
+    const words = [...(state.vocab[cat.id]||[])].sort((a,b)=>a.word.localeCompare(b.word,'fr'));
+    if (!words.length) return;
+    html += `<div class="category">`;
+    html += `<div class="cat-title" style="color:${cat.color}">${cat.emoji} ${cat.label} (${words.length})</div>`;
+    words.forEach(w => {
+      html += `<div class="word-entry">`;
+      html += `<div class="word-head">`;
+      html += `<span class="word-fr">${w.word}</span>`;
+      if (w.translation) html += `<span class="word-it">— ${w.translation}</span>`;
+      if (w.gender) html += `<span class="badge ${w.gender==='femminile'?'badge-f':'badge-m'}">${w.gender==='femminile'?'♀ f.':'♂ m.'}</span>`;
+      if (w.usage) html += `<span class="badge badge-${w.usage}">${usageMap[w.usage]||w.usage}</span>`;
+      html += `</div>`;
+      if (w.plural || w.feminine) {
+        let extra = [];
+        if (w.plural)   extra.push('pl. ' + w.plural);
+        if (w.feminine) extra.push('♀ ' + w.feminine);
+        html += `<div class="word-extra">${extra.join(' · ')}</div>`;
+      }
+      if (w.example) {
+        w.example.split(' — ').filter(Boolean).forEach(ex => {
+          html += `<div class="word-example">« ${ex} »</div>`;
+        });
+      }
+      html += `</div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="footer">Generato da Mon Vocabulaire · ${new Date().toLocaleString('it-IT')}</div>`;
+  html += `</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'mon-vocabulaire-' + new Date().toISOString().slice(0,10) + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Lista scaricata!');
+}
+
 // ── RENDER
 function render() {
   const total = totalWords();
@@ -319,6 +406,7 @@ function render() {
   html += '<div class="header-actions">';
   html += '<input class="search-field" type="text" placeholder="cerca…" value="'+esc(state.search)+'" oninput="state.search=this.value;render()" >';
   html += '<button class="btn-icon" onclick="state.showImportExport=true;render()">⇅ Salva/Carica</button>';
+  html += '<button class="btn-export-list" onclick="downloadList()">📄 Lista</button>';
   html += '<button class="btn-icon" onclick="state.showSettings=true;render()">⚙</button>';
   html += '</div></div></div>';
 
