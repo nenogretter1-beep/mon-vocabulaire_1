@@ -83,6 +83,15 @@
   .settings-row { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
   .settings-label { font-family: 'Source Code Pro', monospace; font-size: 0.68rem; color: #888; letter-spacing: 0.1em; text-transform: uppercase; }
   .btn-export-list { background: #1a1814; border: 1px solid #2a2820; color: #7ec9a0; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+  .btn-challenge { background: #1e1c18; border: 1px solid #d4a85355; color: #d4a853; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+  .challenge-q { font-size: 1rem; color: #f0e8d8; margin-bottom: 0.8rem; line-height: 1.5; }
+  .challenge-hint { font-family: 'Source Code Pro', monospace; font-size: 0.68rem; color: #555; font-style: italic; margin-bottom: 0.8rem; }
+  .challenge-progress { font-family: 'Source Code Pro', monospace; font-size: 0.65rem; color: #555; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1rem; }
+  .challenge-result { text-align: center; padding: 1rem 0; }
+  .challenge-score { font-size: 2rem; font-weight: 400; color: #d4a853; margin-bottom: 0.4rem; }
+  .challenge-msg { font-family: 'Source Code Pro', monospace; font-size: 0.78rem; color: #888; }
+  .answer-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  .answer-correct { color: #7ec9a0; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; margin-top: 0.3rem; } background: #1a1814; border: 1px solid #2a2820; color: #7ec9a0; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
   .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #1a1814; border: 1px solid #d4a853; color: #d4a853; padding: 0.6rem 1.3rem; border-radius: 4px; font-family: 'Source Code Pro', monospace; font-size: 0.78rem; z-index: 999; white-space: nowrap; animation: fadeUp 0.3s ease; pointer-events: none; }
   .toast.info { border-color: #7eb8c9; color: #7eb8c9; }
   .toast.error { border-color: #c97e7e; color: #c97e7e; }
@@ -114,6 +123,7 @@ let state = {
   showSettings: false,
   showDeleteConfirm: null,
   showWordModal: null,   // { word object, loading, result }
+  showChallenge: null,
   importText: "",
   apiKey: "",
   form: { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"" },
@@ -307,90 +317,115 @@ function actionLabel(a) {
   return {sinonimo:"💬 Sinonimi", contrario:"↔ Contrari", esempi:"📖 Altri esempi", correggi:"✓ Verifica"}[a]||a;
 }
 
-// ── DOWNLOAD LIST
+// ── DOWNLOAD LIST AS PDF (via print window)
 function downloadList() {
   const total = Object.values(state.vocab).reduce((s,a)=>s+a.length,0);
   if (total === 0) { showToast("Nessuna parola da esportare", "info"); return; }
-
   const usageMap = {comune:"● comune", informale:"◐ informale", formale:"◈ formale", raro:"○ raro"};
-
-  let html = `<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mon Vocabulaire — Lista</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@300;400&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0f0e0c; color: #e8e0d0; font-family: 'Playfair Display', Georgia, serif; padding: 2rem 1.2rem; max-width: 700px; margin: 0 auto; }
-  h1 { font-size: 2rem; font-weight: 400; margin-bottom: 0.3rem; }
-  .subtitle { font-family: 'Source Code Pro', monospace; font-size: 0.7rem; color: #555; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 2.5rem; }
-  .category { margin-bottom: 2.5rem; }
-  .cat-title { font-family: 'Source Code Pro', monospace; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; padding-bottom: 0.5rem; border-bottom: 1px solid #2a2820; margin-bottom: 1rem; }
-  .word-entry { padding: 0.8rem 0; border-bottom: 1px solid #1a1814; }
-  .word-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.2rem; }
-  .word-fr { font-size: 1.05rem; color: #f0e8d8; }
-  .word-it { font-family: 'Source Code Pro', monospace; font-size: 0.75rem; color: #888; }
-  .badge { font-family: 'Source Code Pro', monospace; font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.1rem 0.35rem; border-radius: 3px; }
-  .badge-m { color: #7eb8c9; background: #7eb8c911; }
-  .badge-f { color: #c97eb8; background: #c97eb811; }
-  .badge-comune { color: #7ec9a0; background: #7ec9a011; }
-  .badge-informale { color: #d4a853; background: #d4a85311; }
-  .badge-formale { color: #7eb8c9; background: #7eb8c911; }
-  .badge-raro { color: #888; background: #88888811; }
-  .word-extra { font-family: 'Source Code Pro', monospace; font-size: 0.65rem; color: #666; margin-top: 0.15rem; }
-  .word-example { font-style: italic; font-size: 0.8rem; color: #5a5248; margin-top: 0.2rem; }
-  .footer { font-family: 'Source Code Pro', monospace; font-size: 0.62rem; color: #333; margin-top: 3rem; letter-spacing: 0.1em; }
-</style>
-</head>
-<body>
-<h1>Mon Vocabulaire</h1>
-<div class="subtitle">${total} parole · ${new Date().toLocaleDateString('it-IT')}</div>
-`;
-
+  let body = "";
   CATEGORIES.forEach(cat => {
     const words = [...(state.vocab[cat.id]||[])].sort((a,b)=>a.word.localeCompare(b.word,'fr'));
     if (!words.length) return;
-    html += `<div class="category">`;
-    html += `<div class="cat-title" style="color:${cat.color}">${cat.emoji} ${cat.label} (${words.length})</div>`;
+    body += `<div class="category"><div class="cat-title" style="color:${cat.color}">${cat.emoji} ${cat.label} (${words.length})</div>`;
     words.forEach(w => {
-      html += `<div class="word-entry">`;
-      html += `<div class="word-head">`;
-      html += `<span class="word-fr">${w.word}</span>`;
-      if (w.translation) html += `<span class="word-it">— ${w.translation}</span>`;
-      if (w.gender) html += `<span class="badge ${w.gender==='femminile'?'badge-f':'badge-m'}">${w.gender==='femminile'?'♀ f.':'♂ m.'}</span>`;
-      if (w.usage) html += `<span class="badge badge-${w.usage}">${usageMap[w.usage]||w.usage}</span>`;
-      html += `</div>`;
-      if (w.plural || w.feminine) {
-        let extra = [];
-        if (w.plural)   extra.push('pl. ' + w.plural);
-        if (w.feminine) extra.push('♀ ' + w.feminine);
-        html += `<div class="word-extra">${extra.join(' · ')}</div>`;
+      body += `<div class="word-entry"><div class="word-head"><span class="word-fr">${w.word}</span>`;
+      if (w.translation) body += `<span class="word-it"> — ${w.translation}</span>`;
+      if (w.gender) body += ` <span class="badge ${w.gender==='femminile'?'badge-f':'badge-m'}">${w.gender==='femminile'?'♀ f.':'♂ m.'}</span>`;
+      if (w.usage) body += ` <span class="badge badge-${w.usage}">${usageMap[w.usage]||w.usage}</span>`;
+      body += `</div>`;
+      if (w.plural||w.feminine) {
+        let x=[]; if(w.plural) x.push('pl. '+w.plural); if(w.feminine) x.push('♀ '+w.feminine);
+        body += `<div class="word-extra">${x.join(' · ')}</div>`;
       }
-      if (w.example) {
-        w.example.split(' — ').filter(Boolean).forEach(ex => {
-          html += `<div class="word-example">« ${ex} »</div>`;
-        });
-      }
-      html += `</div>`;
+      if (w.example) w.example.split(' — ').filter(Boolean).forEach(ex=>{ body+=`<div class="word-example">« ${ex} »</div>`; });
+      body += `</div>`;
     });
-    html += `</div>`;
+    body += `</div>`;
   });
 
-  html += `<div class="footer">Generato da Mon Vocabulaire · ${new Date().toLocaleString('it-IT')}</div>`;
-  html += `</body></html>`;
+  const css = [
+    "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@300;400&display=swap');",
+    "*{box-sizing:border-box;margin:0;padding:0}",
+    "body{background:#fff;color:#1a1814;font-family:'Playfair Display',Georgia,serif;padding:2cm;max-width:100%}",
+    "h1{font-size:1.8rem;font-weight:400;color:#1a1814;margin-bottom:0.2rem}",
+    ".subtitle{font-family:monospace;font-size:0.62rem;color:#888;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:2rem;border-bottom:1px solid #ddd;padding-bottom:0.8rem}",
+    ".category{margin-bottom:1.8rem;page-break-inside:avoid}",
+    ".cat-title{font-family:monospace;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;padding-bottom:0.4rem;border-bottom:2px solid currentColor;margin-bottom:0.8rem;font-weight:600}",
+    ".word-entry{padding:0.5rem 0;border-bottom:1px solid #f0ece4;page-break-inside:avoid}",
+    ".word-head{display:flex;align-items:baseline;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.1rem}",
+    ".word-fr{font-size:0.95rem;color:#1a1814;font-weight:500}",
+    ".word-it{font-family:monospace;font-size:0.68rem;color:#777}",
+    ".badge{font-family:monospace;font-size:0.52rem;letter-spacing:0.06em;text-transform:uppercase;padding:0.1rem 0.3rem;border-radius:3px;border:1px solid currentColor}",
+    ".badge-m{color:#2e7d9e}.badge-f{color:#9e4e8a}.badge-comune{color:#3a8a5a}.badge-informale{color:#9a7a2a}.badge-formale{color:#2e6e9e}.badge-raro{color:#777}",
+    ".word-extra{font-family:monospace;font-size:0.6rem;color:#999;margin-top:0.1rem}",
+    ".word-example{font-style:italic;font-size:0.75rem;color:#888;margin-top:0.15rem}",
+    ".footer{font-family:monospace;font-size:0.55rem;color:#bbb;margin-top:2rem;padding-top:0.8rem;border-top:1px solid #eee;letter-spacing:0.1em}",
+    "@media print{body{padding:1.5cm} @page{margin:1.5cm}}"
+  ].join("\n");
 
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = 'mon-vocabulaire-' + new Date().toISOString().slice(0,10) + '.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('Lista scaricata!');
+  const dateStr = new Date().toLocaleDateString('it-IT');
+  const fullHtml = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Mon Vocabulaire</title><style>' + css + '</style></head><body>'
+    + '<h1>Mon Vocabulaire</h1>'
+    + '<div class="subtitle">' + total + ' parole &nbsp;&middot;&nbsp; ' + dateStr + '</div>'
+    + body
+    + '<div class="footer">Generato da Mon Vocabulaire &middot; ' + new Date().toLocaleString('it-IT') + '</div>'
+    + '<scr' + 'ipt>window.onload=function(){window.print();}</scr' + 'ipt>'
+    + '</body></html>';
+
+  const win = window.open('','_blank','width=800,height=900');
+  win.document.write(fullHtml);
+  win.document.close();
+  showToast('Apri la finestra e salva come PDF 📄');
+}
+
+// ── SFIDA GIORNALIERA
+async function startChallenge() {
+  const allWords = Object.entries(state.vocab).flatMap(([cat,ws])=>ws.map(w=>({...w,cat})));
+  if (allWords.length < 3) { showToast("Aggiungi almeno 3 parole per la sfida!", "info"); return; }
+  state.showChallenge = { loading:true, data:null, step:0, answers:{}, score:null };
+  render();
+  try {
+    // Pick up to 5 random words, bias toward "comune"
+    const comuni = allWords.filter(w=>w.usage==="comune"||!w.usage);
+    const pool = comuni.length >= 3 ? comuni : allWords;
+    const picked = pool.sort(()=>Math.random()-0.5).slice(0,Math.min(5,pool.length));
+    const wordList = picked.map(w=>`"${w.word}" (${w.translation||'?'})`).join(', ');
+    const p = await callClaudeJSON(
+      'Crea una mini sfida linguistica in francese basata su queste parole: '+wordList+'. '+
+      'La sfida deve durare max 2 minuti, essere utile per memorizzare. '+
+      'Scegli uno di questi tipi a caso: traduzione (it→fr), completamento frase, abbinamento parola-definizione. '+
+      'Rispondi SOLO JSON: {"type":"traduzione|completamento|abbinamento","title":"titolo breve","instructions":"istruzione in italiano, max 1 riga","questions":[{"q":"domanda","a":"risposta corretta","hint":"suggerimento opzionale"}]}'
+    );
+    state.showChallenge = { loading:false, data:p, step:0, userAnswers:[], score:null, current:"" };
+    render();
+  } catch(e) {
+    state.showChallenge = null;
+    showToast(e.message==="no-key"?"⚙ Inserisci la chiave API nelle impostazioni":"Errore nella sfida","error");
+    render();
+  }
+}
+
+function submitAnswer() {
+  const ch = state.showChallenge;
+  if (!ch||!ch.data) return;
+  const ans = (ch.current||"").trim();
+  if (!ans) return;
+  ch.userAnswers = ch.userAnswers||[];
+  ch.userAnswers.push(ans);
+  ch.current = "";
+  if (ch.step < ch.data.questions.length-1) {
+    ch.step++;
+  } else {
+    // Score
+    let correct = 0;
+    ch.data.questions.forEach((q,i)=>{
+      const ua = (ch.userAnswers[i]||"").toLowerCase().trim();
+      const ca = q.a.toLowerCase().trim();
+      if (ua===ca || ua===ca.replace(/[^a-zàâçéèêëîïôùûüÿæœ ]/gi,'')) correct++;
+    });
+    ch.score = { correct, total:ch.data.questions.length };
+  }
+  render();
 }
 
 // ── RENDER
@@ -406,7 +441,8 @@ function render() {
   html += '<div class="header-actions">';
   html += '<input class="search-field" type="text" placeholder="cerca…" value="'+esc(state.search)+'" oninput="state.search=this.value;render()" >';
   html += '<button class="btn-icon" onclick="state.showImportExport=true;render()">⇅ Salva/Carica</button>';
-  html += '<button class="btn-export-list" onclick="downloadList()">📄 Lista</button>';
+  html += '<button class="btn-export-list" onclick="downloadList()">📄 PDF</button>';
+  html += '<button class="btn-challenge" onclick="startChallenge()">🎯 Sfida</button>';
   html += '<button class="btn-icon" onclick="state.showSettings=true;render()">⚙</button>';
   html += '</div></div></div>';
 
@@ -442,7 +478,7 @@ function render() {
       html += '<button id="btnGenIt" class="btn-generate" onclick="generateFromItalian()" '+((!state.itWord.trim()||state.generating)?"disabled":"")+' >';
       html += state.generating ? '<span class="spinner"></span> …' : '✨ Traduci';
       html += '</button></div>';
-      if (state.form.word) html += '<div style="font-family:\'Source Code Pro\',monospace;font-size:0.68rem;color:#555;margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:#1e1c18;border-radius:4px;">Risultato → rivedi i campi e premi Aggiungi</div>';
+      if (state.form.word) html += '<div style="font-family:monospace;font-size:0.68rem;color:#555;margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:#1e1c18;border-radius:4px;">Risultato → rivedi i campi e premi Aggiungi</div>';
     } else {
       // French mode
       html += '<div class="form-row">';
@@ -527,11 +563,62 @@ function render() {
     html += '<div class="modal-title">'+actionLabel(m.action)+'</div>';
     html += '<div class="modal-subtitle" style="margin-bottom:0.4rem">'+esc(m.word.word)+(m.word.translation?' — '+esc(m.word.translation):'')+'</div>';
     if (m.loading) {
-      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c8a84a;font-family:\'Source Code Pro\',monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner"></span> Sto chiedendo a Claude…</div>';
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c8a84a;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner"></span> Sto chiedendo a Claude…</div>';
     } else {
       html += '<div class="ai-result">'+esc(m.result)+'</div>';
     }
     html += '<div class="modal-actions"><button class="btn-add" onclick="state.showWordModal=null;render()">Chiudi</button></div>';
+    html += '</div></div>';
+  }
+
+  // CHALLENGE MODAL
+  if (state.showChallenge) {
+    const ch = state.showChallenge;
+    html += '<div class="overlay" onclick="if(event.target===this){state.showChallenge=null;render()}">';
+    html += '<div class="modal" onclick="event.stopPropagation()">';
+    if (ch.loading) {
+      html += '<div class="modal-title">🎯 Sfida giornaliera</div>';
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c8a84a;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner"></span> Preparo la sfida…</div>';
+    } else if (ch.score !== null) {
+      const pct = Math.round(ch.score.correct/ch.score.total*100);
+      const msg = pct===100?"Parfait! 🌟":pct>=60?"Bien joué! 👍":"Continue à pratiquer! 💪";
+      html += '<div class="modal-title">Risultato</div>';
+      html += '<div class="challenge-result">';
+      html += '<div class="challenge-score">'+ch.score.correct+' / '+ch.score.total+'</div>';
+      html += '<div class="challenge-msg">'+msg+'</div>';
+      // Show answers recap
+      html += '<div style="margin-top:1.2rem;text-align:left">';
+      ch.data.questions.forEach((q,i)=>{
+        const ua = ch.userAnswers[i]||"";
+        const ok = ua.toLowerCase().trim()===q.a.toLowerCase().trim();
+        html += '<div style="padding:0.4rem 0;border-bottom:1px solid #1e1c18;font-family:monospace;font-size:0.7rem">';
+        html += '<span style="color:#555">'+esc(q.q)+'</span><br>';
+        html += '<span style="color:'+(ok?'#7ec9a0':'#c97e7e')+'">'+(ok?'✓':'✗')+' '+esc(ua||'—')+'</span>';
+        if (!ok) html += ' <span style="color:#555">→ '+esc(q.a)+'</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+      html += '<div class="modal-actions">';
+      html += '<button class="btn-ghost" onclick="state.showChallenge=null;render()">Chiudi</button>';
+      html += '<button class="btn-add" onclick="startChallenge()">🔄 Nuova sfida</button>';
+      html += '</div>';
+    } else {
+      const q = ch.data.questions[ch.step];
+      html += '<div class="modal-title">'+esc(ch.data.title)+'</div>';
+      html += '<div class="modal-subtitle">'+esc(ch.data.instructions)+'</div>';
+      html += '<div class="challenge-progress">Domanda '+(ch.step+1)+' di '+ch.data.questions.length+'</div>';
+      html += '<div class="challenge-q">'+esc(q.q)+'</div>';
+      if (q.hint) html += '<div class="challenge-hint">💡 '+esc(q.hint)+'</div>';
+      html += '<div class="answer-row">';
+      html += '<input class="field" id="challengeInput" type="text" placeholder="La tua risposta…" value="'+esc(ch.current||'')+'"'
+            + ' oninput="state.showChallenge.current=this.value"'
+            + ' onkeydown="if(event.key===\'Enter\')submitAnswer()">';
+      html += '<button class="btn-add" onclick="submitAnswer()">→</button>';
+      html += '</div>';
+      html += '<div class="modal-actions" style="margin-top:0.6rem">';
+      html += '<button class="btn-ghost" onclick="state.showChallenge=null;render()">Abbandona</button>';
+      html += '</div>';
+    }
     html += '</div></div>';
   }
 
@@ -558,7 +645,7 @@ function render() {
     html += '<div class="settings-row"><div class="settings-label">Chiave API (sk-ant-...)</div>';
     html += '<input class="field" type="password" placeholder="sk-ant-api03-..." value="'+esc(state.apiKey)+'" oninput="state.apiKey=this.value;saveApiKey(this.value)">';
     html += '</div>';
-    html += '<div style="font-family:\'Source Code Pro\',monospace;font-size:0.65rem;color:#444;line-height:1.6;margin-bottom:1rem">Ottienila su console.anthropic.com — salvata automaticamente sul telefono.</div>';
+    html += '<div style="font-family:monospace;font-size:0.65rem;color:#444;line-height:1.6;margin-bottom:1rem">Ottienila su console.anthropic.com — salvata automaticamente sul telefono.</div>';
     html += '<div class="modal-actions"><button class="btn-add" onclick="state.showSettings=false;render()">Chiudi</button></div>';
     html += '</div></div>';
   }
