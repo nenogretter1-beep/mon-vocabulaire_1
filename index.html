@@ -378,25 +378,55 @@ function downloadList() {
   showToast('Apri la finestra e salva come PDF 📄');
 }
 
-// ── SFIDA GIORNALIERA
+// ── SFIDA GIORNALIERA (parole esistenti)
 async function startChallenge() {
   const allWords = Object.entries(state.vocab).flatMap(([cat,ws])=>ws.map(w=>({...w,cat})));
   if (allWords.length < 3) { showToast("Aggiungi almeno 3 parole per la sfida!", "info"); return; }
-  state.showChallenge = { loading:true, data:null, step:0, answers:{}, score:null };
+  state.showChallenge = { loading:true, data:null, step:0, userAnswers:[], score:null, current:"", mode:"existing" };
   render();
   try {
-    // Pick up to 5 random words, bias toward "comune"
     const comuni = allWords.filter(w=>w.usage==="comune"||!w.usage);
     const pool = comuni.length >= 3 ? comuni : allWords;
     const picked = pool.sort(()=>Math.random()-0.5).slice(0,Math.min(5,pool.length));
-    const wordList = picked.map(w=>`"${w.word}" (${w.translation||'?'})`).join(', ');
+    const wordDetails = picked.map(w=>{
+      let info = '"'+w.word+'" ('+( w.translation||'?')+', cat:'+w.cat;
+      if (w.gender) info += ', genere:'+w.gender;
+      if (w.plural) info += ', plurale:'+w.plural;
+      if (w.feminine) info += ', femminile:'+w.feminine;
+      info += ')';
+      return info;
+    }).join('; ');
     const p = await callClaudeJSON(
-      'Crea una mini sfida linguistica in francese basata su queste parole: '+wordList+'. '+
-      'La sfida deve durare max 2 minuti, essere utile per memorizzare. '+
-      'Scegli uno di questi tipi a caso: traduzione (it→fr), completamento frase, abbinamento parola-definizione. '+
-      'Rispondi SOLO JSON: {"type":"traduzione|completamento|abbinamento","title":"titolo breve","instructions":"istruzione in italiano, max 1 riga","questions":[{"q":"domanda","a":"risposta corretta","hint":"suggerimento opzionale"}]}'
+      'Crea una mini sfida di francese (max 5 domande, max 2 minuti) usando queste parole: '+wordDetails+'. '+
+      'IMPORTANTE: usa forme VARIATE — plurali, femminili, verbi coniugati a tempi diversi (presente/passé composé/futur), non solo infinito o maschile singolare. '+
+      'Scegli a caso tra: traduzione it→fr con forma specifica (es. "Come si dice vicinA?"), completamento frase con forma declinata/coniugata, trasformazione (es. "Metti al plurale: voisin"). '+
+      'Rispondi SOLO JSON senza markdown: {"type":"string","title":"titolo breve","instructions":"istruzione in italiano max 1 riga","questions":[{"q":"domanda","a":"risposta esatta","hint":"aiuto opzionale"}]}'
     );
-    state.showChallenge = { loading:false, data:p, step:0, userAnswers:[], score:null, current:"" };
+    state.showChallenge = { loading:false, data:p, step:0, userAnswers:[], score:null, current:"", mode:"existing" };
+    render();
+  } catch(e) {
+    state.showChallenge = null;
+    showToast(e.message==="no-key"?"⚙ Inserisci la chiave API nelle impostazioni":"Errore nella sfida","error");
+    render();
+  }
+}
+
+// ── SFIDA NUOVE PAROLE
+async function startChallengeNew() {
+  state.showChallenge = { loading:true, data:null, step:0, userAnswers:[], score:null, current:"", mode:"new" };
+  render();
+  try {
+    // Collect words already known to exclude them
+    const known = Object.values(state.vocab).flatMap(ws=>ws.map(w=>w.word.toLowerCase()));
+    const knownStr = known.length > 0 ? 'Parole già note da escludere: '+known.slice(0,30).join(', ')+'. ' : '';
+    const p = await callClaudeJSON(
+      'Crea una mini lezione+sfida per imparare 4-5 parole francesi nuove e comuni, utili nella vita quotidiana. '+
+      knownStr+
+      'Prima insegna le parole (includi traduzione, genere se sostantivo, esempio), poi fai 4-5 domande per testarle. '+
+      'Varia le domande: traduzione, completamento frase, forma declinata/coniugata. '+
+      'Rispondi SOLO JSON senza markdown: {"type":"nuove","title":"titolo breve","intro":"breve presentazione delle parole in italiano (una per riga: parola — traduzione — esempio)","questions":[{"q":"domanda","a":"risposta esatta","hint":"aiuto opzionale"}]}'
+    );
+    state.showChallenge = { loading:false, data:p, step:0, userAnswers:[], score:null, current:"", mode:"new", showIntro:true };
     render();
   } catch(e) {
     state.showChallenge = null;
@@ -442,7 +472,8 @@ function render() {
   html += '<input class="search-field" type="text" placeholder="cerca…" value="'+esc(state.search)+'" oninput="state.search=this.value;render()" >';
   html += '<button class="btn-icon" onclick="state.showImportExport=true;render()">⇅ Salva/Carica</button>';
   html += '<button class="btn-export-list" onclick="downloadList()">📄 PDF</button>';
-  html += '<button class="btn-challenge" onclick="startChallenge()">🎯 Sfida</button>';
+  html += '<button class="btn-challenge" onclick="startChallenge()">🎯 Le mie parole</button>';
+  html += '<button class="btn-challenge" style="border-color:#7ec9a055;color:#7ec9a0" onclick="startChallengeNew()">🌱 Parole nuove</button>';
   html += '<button class="btn-icon" onclick="state.showSettings=true;render()">⚙</button>';
   html += '</div></div></div>';
 
@@ -577,8 +608,16 @@ function render() {
     html += '<div class="overlay" onclick="if(event.target===this){state.showChallenge=null;render()}">';
     html += '<div class="modal" onclick="event.stopPropagation()">';
     if (ch.loading) {
-      html += '<div class="modal-title">🎯 Sfida giornaliera</div>';
-      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c8a84a;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner"></span> Preparo la sfida…</div>';
+      html += '<div class="modal-title">'+(ch.mode==="new"?"🌱 Parole nuove":"🎯 Le mie parole")+'</div>';
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c8a84a;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner"></span> '+(ch.mode==="new"?"Preparo parole nuove…":"Preparo la sfida…")+\'</div>\';
+    } else if (ch.showIntro && ch.data && ch.data.intro) {
+      html += '<div class="modal-title">🌱 '+esc(ch.data.title)+'</div>';
+      html += '<div class="modal-subtitle">Studia queste parole prima di iniziare la sfida:</div>';
+      html += '<div class="ai-result">'+esc(ch.data.intro)+'</div>';
+      html += '<div class="modal-actions">';
+      html += '<button class="btn-ghost" onclick="state.showChallenge=null;render()">Chiudi</button>';
+      html += '<button class="btn-add" onclick="state.showChallenge.showIntro=false;render()">Inizia la sfida →</button>';
+      html += '</div>';
     } else if (ch.score !== null) {
       const pct = Math.round(ch.score.correct/ch.score.total*100);
       const msg = pct===100?"Parfait! 🌟":pct>=60?"Bien joué! 👍":"Continue à pratiquer! 💪";
@@ -600,11 +639,15 @@ function render() {
       html += '</div></div>';
       html += '<div class="modal-actions">';
       html += '<button class="btn-ghost" onclick="state.showChallenge=null;render()">Chiudi</button>';
-      html += '<button class="btn-add" onclick="startChallenge()">🔄 Nuova sfida</button>';
+      if (ch.mode==="new") {
+        html += '<button class="btn-add" onclick="startChallengeNew()">🌱 Altre parole nuove</button>';
+      } else {
+        html += '<button class="btn-add" onclick="startChallenge()">🔄 Nuova sfida</button>';
+      }
       html += '</div>';
     } else {
       const q = ch.data.questions[ch.step];
-      html += '<div class="modal-title">'+esc(ch.data.title)+'</div>';
+      html += '<div class="modal-title">'+(ch.mode==="new"?"🌱 ":"🎯 ")+esc(ch.data.title)+'</div>';
       html += '<div class="modal-subtitle">'+esc(ch.data.instructions)+'</div>';
       html += '<div class="challenge-progress">Domanda '+(ch.step+1)+' di '+ch.data.questions.length+'</div>';
       html += '<div class="challenge-q">'+esc(q.q)+'</div>';
