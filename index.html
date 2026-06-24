@@ -609,7 +609,7 @@ function render() {
     html += '<div class="modal" onclick="event.stopPropagation()">';
     if (ch.loading) {
       html += '<div class="modal-title">'+(ch.mode==="new"?"🌱 Parole nuove":"🎯 Le mie parole")+'</div>';
-      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c8a84a;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner"></span> '+(ch.mode==="new"?"Preparo parole nuove…":"Preparo la sfida…")+\'</div>\';
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c8a84a;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner"></span> '+(ch.mode==="new"?"Preparo parole nuove…":"Preparo la sfida…")+'</div>';
     } else if (ch.showIntro && ch.data && ch.data.intro) {
       html += '<div class="modal-title">🌱 '+esc(ch.data.title)+'</div>';
       html += '<div class="modal-subtitle">Studia queste parole prima di iniziare la sfida:</div>';
