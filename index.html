@@ -91,7 +91,25 @@
   .challenge-score { font-size: 2rem; font-weight: 400; color: #d4a853; margin-bottom: 0.4rem; }
   .challenge-msg { font-family: 'Source Code Pro', monospace; font-size: 0.78rem; color: #888; }
   .answer-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-  .answer-correct { color: #7ec9a0; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; margin-top: 0.3rem; } background: #1a1814; border: 1px solid #2a2820; color: #7ec9a0; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+  .answer-correct { color: #7ec9a0; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; margin-top: 0.3rem; }
+  .btn-camera { background: #1e1c18; border: 1px solid #7eb8c955; color: #7eb8c9; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+  .photo-preview { width: 100%; max-height: 280px; object-fit: contain; border-radius: 6px; border: 1px solid #2a2820; margin-bottom: 1rem; background: #0a0908; }
+  .upload-zone { border: 2px dashed #2a2820; border-radius: 8px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+  .upload-zone:hover { border-color: #7eb8c9; }
+  .upload-icon { font-size: 2rem; margin-bottom: 0.6rem; }
+  .upload-text { font-family: 'Source Code Pro', monospace; font-size: 0.78rem; color: #888; }
+  .upload-subtext { font-family: 'Source Code Pro', monospace; font-size: 0.65rem; color: #444; margin-top: 0.4rem; }
+  .sentence-pick { background: #1a1814; border: 1px solid #2a2820; border-radius: 4px; padding: 0.7rem 0.9rem; margin-bottom: 0.5rem; cursor: pointer; font-size: 0.92rem; line-height: 1.5; color: #d8d0c0; transition: all 0.2s; }
+  .sentence-pick:hover { border-color: #7eb8c9; background: #1e1c18; }
+  .analysis-global { background: #0e1e2a; border: 1px solid #7eb8c955; border-radius: 6px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .analysis-global-label { font-family: 'Source Code Pro', monospace; font-size: 0.62rem; color: #7eb8c9; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.4rem; }
+  .analysis-global-text { font-style: italic; font-size: 0.95rem; color: #e8e0d0; line-height: 1.5; }
+  .word-breakdown-item { background: #1a1814; border: 1px solid #2a2820; border-radius: 4px; padding: 0.7rem 0.9rem; margin-bottom: 0.5rem; }
+  .wb-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .wb-word { font-size: 1rem; color: #f0e8d8; }
+  .wb-trans { font-family: 'Source Code Pro', monospace; font-size: 0.75rem; color: #888; }
+  .wb-add { background: #d4a85322; border: 1px solid #d4a853; color: #d4a853; border-radius: 3px; padding: 0.2rem 0.5rem; cursor: pointer; font-family: 'Source Code Pro', monospace; font-size: 0.62rem; flex-shrink: 0; }
+  .wb-add:disabled { background: #7ec9a022; border-color: #7ec9a0; color: #7ec9a0; cursor: default; } background: #1a1814; border: 1px solid #2a2820; color: #7ec9a0; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
   .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: #1a1814; border: 1px solid #d4a853; color: #d4a853; padding: 0.6rem 1.3rem; border-radius: 4px; font-family: 'Source Code Pro', monospace; font-size: 0.78rem; z-index: 999; white-space: nowrap; animation: fadeUp 0.3s ease; pointer-events: none; }
   .toast.info { border-color: #7eb8c9; color: #7eb8c9; }
   .toast.error { border-color: #c97e7e; color: #c97e7e; }
@@ -124,6 +142,7 @@ let state = {
   showDeleteConfirm: null,
   showWordModal: null,   // { word object, loading, result }
   showChallenge: null,
+  showPhotoAnalysis: null, // { step: "upload"|"ocr-loading"|"select"|"analyze-loading"|"result", image, ocrText, sentences, selectedSentence, analysis }
   importText: "",
   apiKey: "",
   form: { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"" },
@@ -174,6 +193,38 @@ async function callClaude(prompt) {
 
 async function callClaudeJSON(prompt) {
   const text = await callClaude(prompt);
+  return JSON.parse(text);
+}
+
+async function callClaudeWithImage(base64Data, mediaType, prompt) {
+  if (!state.apiKey) throw new Error("no-key");
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": state.apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1500,
+      messages: [{
+        role: "user",
+        content: [
+          { type:"image", source:{ type:"base64", media_type: mediaType, data: base64Data } },
+          { type:"text", text: prompt }
+        ]
+      }]
+    })
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || "API error " + res.status); }
+  const data = await res.json();
+  return (data.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+}
+
+async function callClaudeJSONWithImage(base64Data, mediaType, prompt) {
+  const text = await callClaudeWithImage(base64Data, mediaType, prompt);
   return JSON.parse(text);
 }
 
@@ -278,6 +329,102 @@ function findWord(wordId) {
     const w = cat.find(w=>w.id===wordId);
     if (w) return w;
   }
+}
+
+// ── PHOTO ANALYSIS WORKFLOW
+function openPhotoAnalysis() {
+  if (!state.apiKey) { showToast("⚙ Inserisci la chiave API nelle impostazioni", "error"); return; }
+  state.showPhotoAnalysis = { step:"upload" };
+  render();
+}
+
+function handlePhotoSelected(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    const base64 = dataUrl.split(",")[1];
+    const mediaType = file.type || "image/jpeg";
+    state.showPhotoAnalysis = { step:"ocr-loading", image:dataUrl, base64, mediaType };
+    render();
+    try {
+      const p = await callClaudeJSONWithImage(base64, mediaType,
+        'Leggi tutto il testo francese visibile in questa immagine (libro, cartello, menu, ecc). '+
+        'Suddividi il testo in frasi o porzioni di senso compiuto. '+
+        'Rispondi SOLO JSON senza markdown: {"full_text":"tutto il testo letto","sentences":["frase1","frase2",...]}'
+      );
+      state.showPhotoAnalysis = { step:"select", image:dataUrl, base64, mediaType, ocrText:p.full_text, sentences:p.sentences||[] };
+      render();
+    } catch(err) {
+      showToast(err.message==="no-key" ? "⚙ Inserisci la chiave API nelle impostazioni" : "Errore lettura immagine: "+err.message, "error");
+      state.showPhotoAnalysis = null;
+      render();
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function backToSentenceSelect() {
+  const pa = state.showPhotoAnalysis;
+  if (!pa) return;
+  state.showPhotoAnalysis = { step:"select", image:pa.image, base64:pa.base64, mediaType:pa.mediaType, ocrText:pa.ocrText, sentences:pa.sentences };
+  render();
+}
+
+function analyzeSentenceByIndex(i) {
+  const pa = state.showPhotoAnalysis;
+  if (!pa || !pa.sentences || !pa.sentences[i]) return;
+  analyzeSentence(pa.sentences[i]);
+}
+
+async function analyzeSentence(sentence) {
+  const pa = state.showPhotoAnalysis;
+  if (!pa) return;
+  state.showPhotoAnalysis = { ...pa, step:"analyze-loading", selectedSentence: sentence };
+  render();
+  try {
+    const p = await callClaudeJSON(
+      'Analizza questa frase francese: "'+sentence+'". '+
+      'Rispondi SOLO JSON senza markdown: {"global_meaning":"traduzione/significato globale in italiano",'+
+      '"words":[{"word":"parola in francese come appare nel testo","base_form":"forma base/dizionario",'+
+      '"translation":"traduzione italiana","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro",'+
+      '"gender":"maschile o femminile solo se sostantivo altrimenti null","plural":"plurale solo se sostantivo altrimenti null",'+
+      '"feminine":"femminile solo se aggettivo altrimenti null","usage":"comune|informale|formale|raro",'+
+      '"example1_fr":"frase di esempio 1","example2_fr":"frase di esempio 2"}]} '+
+      'Includi solo le parole significative (salta articoli, preposizioni semplici come "le","de","et" a meno che non siano rilevanti).'
+    );
+    state.showPhotoAnalysis = { ...pa, step:"result", selectedSentence: sentence, analysis: p };
+    render();
+  } catch(err) {
+    showToast(err.message==="no-key" ? "⚙ Inserisci la chiave API nelle impostazioni" : "Errore analisi: "+err.message, "error");
+    state.showPhotoAnalysis = { ...pa, step:"select" };
+    render();
+  }
+}
+
+function addWordFromPhoto(wIndex) {
+  const pa = state.showPhotoAnalysis;
+  if (!pa || !pa.analysis) return;
+  const w = pa.analysis.words[wIndex];
+  if (!w || w._added) return;
+  const catId = CATEGORIES.find(c=>c.id===w.category) ? w.category : "altro";
+  const entry = {
+    id: Date.now()+wIndex,
+    word: w.base_form || w.word,
+    translation: w.translation || "",
+    gender: w.gender || "",
+    plural: w.plural || "",
+    feminine: w.feminine || "",
+    usage: w.usage || "",
+    example: [w.example1_fr, w.example2_fr].filter(Boolean).join(" — "),
+    addedAt: new Date().toLocaleDateString("it-IT"),
+  };
+  state.vocab[catId].push(entry);
+  saveVocab();
+  w._added = true;
+  showToast('"'+entry.word+'" aggiunto a '+CATEGORIES.find(c=>c.id===catId).label+'!');
+  render();
 }
 
 // ── IMPORT / EXPORT
@@ -471,6 +618,7 @@ function render() {
   html += '<div class="header-actions">';
   html += '<input class="search-field" type="text" placeholder="cerca…" value="'+esc(state.search)+'" oninput="state.search=this.value;render()" >';
   html += '<button class="btn-icon" onclick="state.showImportExport=true;render()">⇅ Salva/Carica</button>';
+  html += '<button class="btn-camera" onclick="openPhotoAnalysis()">📷 Foto</button>';
   html += '<button class="btn-export-list" onclick="downloadList()">📄 PDF</button>';
   html += '<button class="btn-challenge" onclick="startChallenge()">🎯 Le mie parole</button>';
   html += '<button class="btn-challenge" style="border-color:#7ec9a055;color:#7ec9a0" onclick="startChallengeNew()">🌱 Parole nuove</button>';
@@ -599,6 +747,80 @@ function render() {
       html += '<div class="ai-result">'+esc(m.result)+'</div>';
     }
     html += '<div class="modal-actions"><button class="btn-add" onclick="state.showWordModal=null;render()">Chiudi</button></div>';
+    html += '</div></div>';
+  }
+
+  // PHOTO ANALYSIS MODAL
+  if (state.showPhotoAnalysis) {
+    const pa = state.showPhotoAnalysis;
+    html += '<div class="overlay" onclick="if(event.target===this){state.showPhotoAnalysis=null;render()}">';
+    html += '<div class="modal" style="max-width:560px" onclick="event.stopPropagation()">';
+
+    if (pa.step === "upload") {
+      html += '<div class="modal-title">📷 Analizza una frase</div>';
+      html += '<div class="modal-subtitle">Scatta una foto o carica un\u2019immagine con testo in francese — un libro, un cartello, un menu.</div>';
+      html += '<label class="upload-zone" for="photoInput">';
+      html += '<div class="upload-icon">📷</div>';
+      html += '<div class="upload-text">Tocca per scattare o caricare</div>';
+      html += '<div class="upload-subtext">JPG, PNG · max ~5MB</div>';
+      html += '</label>';
+      html += '<input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelected(this)">';
+      html += '<div class="modal-actions"><button class="btn-ghost" onclick="state.showPhotoAnalysis=null;render()">Annulla</button></div>';
+
+    } else if (pa.step === "ocr-loading") {
+      html += '<div class="modal-title">📷 Leggo il testo…</div>';
+      html += '<img class="photo-preview" src="'+pa.image+'">';
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#7eb8c9;font-family:monospace;font-size:0.78rem"><span class="spinner"></span> Riconoscimento testo in corso…</div>';
+
+    } else if (pa.step === "select") {
+      html += '<div class="modal-title">Quale frase ti interessa?</div>';
+      html += '<img class="photo-preview" src="'+pa.image+'">';
+      if (pa.sentences && pa.sentences.length) {
+        html += '<div class="modal-subtitle">Tocca la frase da analizzare:</div>';
+        pa.sentences.forEach((s,i) => {
+          html += '<div class="sentence-pick" onclick="analyzeSentenceByIndex('+i+')">'+esc(s)+'</div>';
+        });
+      } else {
+        html += '<div class="modal-subtitle" style="color:#c97e7e">Nessun testo riconosciuto nell\u2019immagine.</div>';
+      }
+      html += '<div class="modal-actions"><button class="btn-ghost" onclick="state.showPhotoAnalysis=null;render()">Chiudi</button><button class="btn-camera" onclick="openPhotoAnalysis()">📷 Nuova foto</button></div>';
+
+    } else if (pa.step === "analyze-loading") {
+      html += '<div class="modal-title">Analizzo…</div>';
+      html += '<div class="modal-subtitle" style="font-style:italic">"'+esc(pa.selectedSentence)+'"</div>';
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#7eb8c9;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner"></span> Analisi della frase in corso…</div>';
+
+    } else if (pa.step === "result" && pa.analysis) {
+      html += '<div class="modal-title">Analisi frase</div>';
+      html += '<div class="analysis-global">';
+      html += '<div class="analysis-global-label">Frase originale</div>';
+      html += '<div class="analysis-global-text" style="margin-bottom:0.6rem">« '+esc(pa.selectedSentence)+' »</div>';
+      html += '<div class="analysis-global-label">Significato</div>';
+      html += '<div class="analysis-global-text">'+esc(pa.analysis.global_meaning)+'</div>';
+      html += '</div>';
+      html += '<div class="modal-subtitle" style="margin-bottom:0.6rem">Parole della frase — tocca + per aggiungere al vocabolario:</div>';
+      (pa.analysis.words||[]).forEach((w,i) => {
+        const cat = CATEGORIES.find(c=>c.id===w.category);
+        html += '<div class="word-breakdown-item">';
+        html += '<div class="wb-head">';
+        html += '<div><span class="wb-word">'+esc(w.word)+'</span>';
+        if (w.base_form && w.base_form!==w.word) html += ' <span style="font-family:monospace;font-size:0.65rem;color:#555">('+esc(w.base_form)+')</span>';
+        html += ' <span class="wb-trans">— '+esc(w.translation)+'</span></div>';
+        html += '<button class="wb-add" '+(w._added?"disabled":"")+' onclick="addWordFromPhoto('+i+')">'+(w._added?"✓ Aggiunta":"+ Aggiungi")+'</button>';
+        html += '</div>';
+        html += '<div style="margin-top:0.3rem">';
+        if (w.gender) html += '<span class="badge '+(w.gender==="femminile"?"badge-f":"badge-m")+'" style="margin-right:0.3rem">'+(w.gender==="femminile"?"♀ f.":"♂ m.")+'</span>';
+        if (cat) html += '<span class="badge" style="color:'+cat.color+'">'+cat.emoji+' '+cat.label+'</span>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '<div class="modal-actions">';
+      html += '<button class="btn-ghost" onclick="state.showPhotoAnalysis=null;render()">Chiudi</button>';
+      html += '<button class="btn-camera" onclick="backToSentenceSelect()">← Altra frase</button>';
+      html += '<button class="btn-camera" onclick="openPhotoAnalysis()">📷 Nuova foto</button>';
+      html += '</div>';
+    }
+
     html += '</div></div>';
   }
 
