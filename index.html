@@ -340,8 +340,12 @@ function openPhotoAnalysis() {
 
 function handlePhotoSelected(input) {
   const file = input.files && input.files[0];
-  if (!file) return;
+  if (!file) { return; }
+  showToast("Foto ricevuta, elaborazione…", "info");
   const reader = new FileReader();
+  reader.onerror = function() {
+    showToast("Errore nella lettura del file", "error");
+  };
   reader.onload = async (e) => {
     const dataUrl = e.target.result;
     const base64 = dataUrl.split(",")[1];
@@ -753,7 +757,7 @@ function render() {
   // PHOTO ANALYSIS MODAL
   if (state.showPhotoAnalysis) {
     const pa = state.showPhotoAnalysis;
-    html += '<div class="overlay" onclick="if(event.target===this){state.showPhotoAnalysis=null;render()}">';
+    html += '<div class="overlay" id="photoOverlay">';
     html += '<div class="modal" style="max-width:560px" onclick="event.stopPropagation()">';
 
     if (pa.step === "upload") {
@@ -764,7 +768,7 @@ function render() {
       html += '<div class="upload-text">Tocca per scattare o caricare</div>';
       html += '<div class="upload-subtext">JPG, PNG · max ~5MB</div>';
       html += '</label>';
-      html += '<input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelected(this)">';
+      html += '<input id="photoInput" type="file" accept="image/*" capture="environment" style="display:none">';
       html += '<div class="modal-actions"><button class="btn-ghost" onclick="state.showPhotoAnalysis=null;render()">Annulla</button></div>';
 
     } else if (pa.step === "ocr-loading") {
@@ -929,6 +933,22 @@ function render() {
   }
 
   document.getElementById("app").innerHTML = html;
+  wirePhotoOverlay();
+}
+
+// Wire overlay close + file input listener AFTER the DOM exists,
+// avoiding inline onclick/onchange which can misfire on mobile camera flows.
+function wirePhotoOverlay() {
+  const overlay = document.getElementById("photoOverlay");
+  if (overlay) {
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) { state.showPhotoAnalysis = null; render(); }
+    });
+  }
+  const input = document.getElementById("photoInput");
+  if (input) {
+    input.addEventListener("change", function() { handlePhotoSelected(input); }, { once: true });
+  }
 }
 
 loadState();
