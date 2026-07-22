@@ -130,8 +130,28 @@ const CATEGORIES = [
 const STORAGE_KEY   = "mon-vocabulaire-v1";
 const API_KEY_STORE = "mon-vocab-apikey";
 
+const LANG_CONFIG = {
+  fr: {
+    name: "Francese", flag: "🇫🇷", target: "francese", targetNative: "français",
+    inputMode_fr: "🇫🇷 Inserisci in francese", inputMode_it: "🇮🇹 Inserisci in italiano",
+    promptLang: "francese", photoPromptLang: "francese",
+    appTitle: "Mon Vocabulaire",
+  },
+  en: {
+    name: "Inglese", flag: "🇬🇧", target: "inglese", targetNative: "English",
+    inputMode_fr: "🇬🇧 Inserisci in inglese", inputMode_it: "🇮🇹 Inserisci in italiano",
+    promptLang: "inglese", photoPromptLang: "inglese",
+    appTitle: "My Vocabulary",
+  },
+};
+function LC() { return LANG_CONFIG[state.lang] || LANG_CONFIG.fr; }
+
 let state = {
-  vocab: { aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] },
+  lang: null,  // "fr" | "en" — chosen on first open
+  vocab: {
+    fr: { aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] },
+    en: { aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] },
+  },
   activeTab: "sostantivi",
   mode: "fr",
   search: "",
@@ -150,12 +170,18 @@ let state = {
 };
 
 // ── PERSISTENCE
+const LANG_STORE = "mon-vocab-lang";
+
 function loadState() {
-  try { const r = localStorage.getItem(STORAGE_KEY); if (r) state.vocab = JSON.parse(r); } catch(e){}
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) { const v = JSON.parse(r); state.vocab = v.fr ? v : { fr: v, en: { aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] } }; } } catch(e){}
   try { const k = localStorage.getItem(API_KEY_STORE); if (k) state.apiKey = k; } catch(e){}
+  // lang is always chosen at startup, never persisted
 }
 function saveVocab() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.vocab)); } catch(e){}
+}
+function saveLang(l) {
+  try { localStorage.setItem(LANG_STORE, l); } catch(e){}
 }
 function saveApiKey(k) {
   try { localStorage.setItem(API_KEY_STORE, k); } catch(e){}
@@ -238,11 +264,12 @@ async function generateFromFrench() {
     const isSost = state.activeTab==="sostantivi", isAgg = state.activeTab==="aggettivi";
     const extraS = isSost ? '"gender":"maschile o femminile","plural":"plurale francese",' : "";
     const extraA = isAgg  ? '"feminine":"forma femminile",' : "";
+    const lang = LC();
     const p = await callClaudeJSON(
-      'Analizza la parola francese "'+word+'" da inserire in "'+catLabel+'". '+
+      'Analizza la parola '+lang.target+' "'+word+'" da inserire in "'+catLabel+'". '+
       'Rispondi SOLO JSON: {"spelling_ok":true/false,"spelling_correction":null,"category_ok":true/false,'+
-      '"suggested_category":null,"translation":"trad italiana",'+extraS+extraA+
-      '"usage":"comune|informale|formale|raro","example1_fr":"frase1","example2_fr":"frase2"}'
+      '"suggested_category":null,"translation":"traduzione italiana",'+extraS+extraA+
+      '"usage":"comune|informale|formale|raro","example1_fr":"frase di esempio 1 in '+lang.target+'","example2_fr":"frase di esempio 2 in '+lang.target+'"}'
     );
     // auto-switch category if wrong
     if (!p.category_ok && p.suggested_category) {
@@ -270,9 +297,10 @@ async function generateFromItalian() {
   if (!word || state.generating) return;
   state.generating = true; state.warning = null; render();
   try {
+    const lang2 = LC();
     const p = await callClaudeJSON(
-      'Traduci "'+word+'" italiano→francese. SOLO JSON: {"word_fr":"","translation":"","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro",'+
-      '"gender":null,"plural":null,"feminine":null,"usage":"comune|informale|formale|raro","example1_fr":"","example2_fr":""}'
+      'Traduci "'+word+'" italiano→'+lang2.target+'. SOLO JSON: {"word_fr":"parola in '+lang2.target+'","translation":"traduzione italiana confermata","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro",'+
+      '"gender":null,"plural":null,"feminine":null,"usage":"comune|informale|formale|raro","example1_fr":"esempio 1 in '+lang2.target+'","example2_fr":"esempio 2 in '+lang2.target+'"}'
     );
     if (p.category && CATEGORIES.find(c=>c.id===p.category)) state.activeTab = p.category;
     state.form = { word:p.word_fr||"", translation:p.translation||word, gender:p.gender||"", plural:p.plural||"", feminine:p.feminine||"", usage:p.usage||"", example:[p.example1_fr,p.example2_fr].filter(Boolean).join(" — ") };
@@ -287,7 +315,7 @@ async function generateFromItalian() {
 function addWord() {
   if (!state.form.word.trim()) return;
   const entry = { id:Date.now(), ...Object.fromEntries(Object.entries(state.form).map(([k,v])=>[k,v.trim()])), addedAt:new Date().toLocaleDateString("it-IT") };
-  state.vocab[state.activeTab].push(entry);
+  state.vocab[state.lang][state.activeTab].push(entry);
   saveVocab();
   state.form = { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"" };
   state.itWord = ""; state.warning = null;
@@ -297,7 +325,7 @@ function addWord() {
 
 // ── DELETE WORD
 function deleteWord(catId, wordId) {
-  state.vocab[catId] = state.vocab[catId].filter(w=>w.id!==wordId);
+  state.vocab[state.lang][catId] = state.vocab[state.lang][catId].filter(w=>w.id!==wordId);
   saveVocab(); state.showDeleteConfirm = null;
   showToast("Parola rimossa","info"); render();
 }
@@ -309,11 +337,12 @@ async function wordAction(action, wordId) {
   state.showWordModal = { word:w, action, loading:true, result:"" };
   render();
   try {
+    const wlang = LC();
     const prompts = {
-      sinonimo:  'Dammi 3 sinonimi francesi di "'+w.word+'" con traduzione italiana. Rispondi in testo semplice, una riga per sinonimo: parola — traduzione.',
-      contrario: 'Dammi 2-3 contrari francesi di "'+w.word+'" con traduzione italiana. Rispondi in testo semplice, una riga per contrario: parola — traduzione.',
-      esempi:    'Dammi 3 nuovi esempi d\'uso in francese di "'+w.word+'", diversi da quelli che già conosce. Solo le frasi, una per riga.',
-      correggi:  'La parola/traduzione francese è "'+w.word+'" = "'+w.translation+'". Categoria: "'+w.cat+'". È tutto corretto? Segnala eventuali errori e suggerisci correzioni. Risposta breve e diretta.',
+      sinonimo:  'Dammi 3 sinonimi in '+wlang.target+' di "'+w.word+'" con traduzione italiana. Rispondi in testo semplice, una riga per sinonimo: parola — traduzione.',
+      contrario: 'Dammi 2-3 contrari in '+wlang.target+' di "'+w.word+'" con traduzione italiana. Rispondi in testo semplice, una riga per contrario: parola — traduzione.',
+      esempi:    'Dammi 3 nuovi esempi d\'uso in '+wlang.target+' di "'+w.word+'", diversi da quelli che già conosce. Solo le frasi, una per riga.',
+      correggi:  'La parola/traduzione in '+wlang.target+' è "'+w.word+'" = "'+w.translation+'". Categoria: "'+w.cat+'". È tutto corretto? Segnala eventuali errori e suggerisci correzioni. Risposta breve e diretta.',
     };
     const result = await callClaude(prompts[action]);
     state.showWordModal = { word:w, action, loading:false, result };
@@ -354,7 +383,7 @@ function handlePhotoSelected(input) {
     render();
     try {
       const p = await callClaudeJSONWithImage(base64, mediaType,
-        'Leggi tutto il testo francese visibile in questa immagine (libro, cartello, menu, ecc). '+
+        'Leggi tutto il testo in '+LC().target+' visibile in questa immagine (libro, cartello, menu, ecc). '+
         'Suddividi il testo in frasi o porzioni di senso compiuto. '+
         'Rispondi SOLO JSON senza markdown: {"full_text":"tutto il testo letto","sentences":["frase1","frase2",...]}'
       );
@@ -389,7 +418,7 @@ async function analyzeSentence(sentence) {
   render();
   try {
     const p = await callClaudeJSON(
-      'Analizza questa frase francese: "'+sentence+'". '+
+      'Analizza questa frase in '+LC().target+': "'+sentence+'". '+
       'Rispondi SOLO JSON senza markdown: {"global_meaning":"traduzione/significato globale in italiano",'+
       '"words":[{"word":"parola in francese come appare nel testo","base_form":"forma base/dizionario",'+
       '"translation":"traduzione italiana","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro",'+
@@ -424,7 +453,7 @@ function addWordFromPhoto(wIndex) {
     example: [w.example1_fr, w.example2_fr].filter(Boolean).join(" — "),
     addedAt: new Date().toLocaleDateString("it-IT"),
   };
-  state.vocab[catId].push(entry);
+  state.vocab[state.lang][catId].push(entry);
   saveVocab();
   w._added = true;
   showToast('"'+entry.word+'" aggiunto a '+CATEGORIES.find(c=>c.id===catId).label+'!');
@@ -433,7 +462,7 @@ function addWordFromPhoto(wIndex) {
 
 // ── IMPORT / EXPORT
 function exportVocab() {
-  const json = JSON.stringify(state.vocab, null, 2);
+  const json = JSON.stringify(state.vocab[state.lang], null, 2);
   if (navigator.clipboard?.writeText)
     navigator.clipboard.writeText(json).then(()=>showToast("Lista copiata!")).catch(()=>{ document.getElementById("importtextarea").value=json; showToast("Copia il testo qui sotto","info"); });
   else { document.getElementById("importtextarea").value=json; showToast("Copia il testo qui sotto","info"); }
@@ -442,17 +471,17 @@ function importVocab() {
   try {
     const p = JSON.parse(state.importText);
     if (!CATEGORIES.every(c=>Array.isArray(p[c.id]))) throw new Error();
-    state.vocab=p; saveVocab(); state.importText=""; state.showImportExport=false;
+    state.vocab[state.lang]=p; saveVocab(); state.importText=""; state.showImportExport=false;
     showToast(Object.values(p).reduce((s,a)=>s+a.length,0)+" parole importate!"); render();
   } catch(e) { showToast("Dati non validi","error"); }
 }
 
 // ── HELPERS
-function totalWords() { return Object.values(state.vocab).reduce((s,a)=>s+a.length,0); }
+function totalWords() { if (!state.lang) return 0; return Object.values(state.vocab[state.lang]).reduce((s,a)=>s+a.length,0); }
 function filteredWords() {
   const q = state.search.toLowerCase();
-  if (q) return Object.entries(state.vocab).flatMap(([cat,ws])=>ws.filter(w=>w.word.toLowerCase().includes(q)||w.translation.toLowerCase().includes(q)).map(w=>({...w,cat})));
-  return state.vocab[state.activeTab].map(w=>({...w,cat:state.activeTab}));
+  if (q) return Object.entries(state.vocab[state.lang]).flatMap(([cat,ws])=>ws.filter(w=>w.word.toLowerCase().includes(q)||w.translation.toLowerCase().includes(q)).map(w=>({...w,cat})));
+  return state.vocab[state.lang][state.activeTab].map(w=>({...w,cat:state.activeTab}));
 }
 function usageBadge(u) {
   if (!u) return "";
@@ -531,7 +560,7 @@ function downloadList() {
 
 // ── SFIDA GIORNALIERA (parole esistenti)
 async function startChallenge() {
-  const allWords = Object.entries(state.vocab).flatMap(([cat,ws])=>ws.map(w=>({...w,cat})));
+  const allWords = Object.entries(state.vocab[state.lang]).flatMap(([cat,ws])=>ws.map(w=>({...w,cat})));
   if (allWords.length < 3) { showToast("Aggiungi almeno 3 parole per la sfida!", "info"); return; }
   state.showChallenge = { loading:true, data:null, step:0, userAnswers:[], score:null, current:"", mode:"existing" };
   render();
@@ -547,8 +576,9 @@ async function startChallenge() {
       info += ')';
       return info;
     }).join('; ');
+    const chlang = LC();
     const p = await callClaudeJSON(
-      'Crea una mini sfida di francese (max 5 domande, max 2 minuti) usando queste parole: '+wordDetails+'. '+
+      'Crea una mini sfida di '+chlang.target+' (max 5 domande, max 2 minuti) usando queste parole: '+wordDetails+'. '+
       'IMPORTANTE: usa forme VARIATE — plurali, femminili, verbi coniugati a tempi diversi (presente/passé composé/futur), non solo infinito o maschile singolare. '+
       'Scegli a caso tra: traduzione it→fr con forma specifica (es. "Come si dice vicinA?"), completamento frase con forma declinata/coniugata, trasformazione (es. "Metti al plurale: voisin"). '+
       'Rispondi SOLO JSON senza markdown: {"type":"string","title":"titolo breve","instructions":"istruzione in italiano max 1 riga","questions":[{"q":"domanda","a":"risposta esatta","hint":"aiuto opzionale"}]}'
@@ -568,10 +598,11 @@ async function startChallengeNew() {
   render();
   try {
     // Collect words already known to exclude them
-    const known = Object.values(state.vocab).flatMap(ws=>ws.map(w=>w.word.toLowerCase()));
+    const known = Object.values(state.vocab[state.lang]).flatMap(ws=>ws.map(w=>w.word.toLowerCase()));
     const knownStr = known.length > 0 ? 'Parole già note da escludere: '+known.slice(0,30).join(', ')+'. ' : '';
+    const newlang = LC();
     const p = await callClaudeJSON(
-      'Crea una mini lezione+sfida per imparare 4-5 parole francesi nuove e comuni, utili nella vita quotidiana. '+
+      'Crea una mini lezione+sfida per imparare 4-5 parole in '+newlang.target+' nuove e comuni, utili nella vita quotidiana. '+
       knownStr+
       'Prima insegna le parole (includi traduzione, genere se sostantivo, esempio), poi fai 4-5 domande per testarle. '+
       'Varia le domande: traduzione, completamento frase, forma declinata/coniugata. '+
@@ -611,6 +642,24 @@ function submitAnswer() {
 
 // ── RENDER
 function render() {
+  // LANGUAGE PICKER
+  if (!state.lang) {
+    let html = '<div style="min-height:100vh;background:#0f0e0c;display:flex;align-items:center;justify-content:center;padding:2rem">';
+    html += '<div style="max-width:360px;width:100%;text-align:center">';
+    html += '<div style="font-family:serif;font-size:2rem;color:#e8e0d0;margin-bottom:0.5rem">Vocabulaire</div>';
+    html += '<div style="font-family:monospace;font-size:0.7rem;color:#555;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:3rem">Scegli la lingua</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:1rem">';
+    html += '<button onclick="state.lang=\'fr\';saveLang(\'fr\');render()" style="background:#1a1814;border:1px solid #2a2820;border-radius:8px;padding:1.4rem;cursor:pointer;text-align:left;display:flex;align-items:center;gap:1rem">';
+    html += '<span style="font-size:2.2rem">🇫🇷</span><div><div style="font-family:serif;font-size:1.2rem;color:#e8e0d0">Francese</div><div style="font-family:monospace;font-size:0.68rem;color:#666;margin-top:0.2rem">Mon Vocabulaire</div></div>';
+    html += '</button>';
+    html += '<button onclick="state.lang=\'en\';saveLang(\'en\');render()" style="background:#1a1814;border:1px solid #2a2820;border-radius:8px;padding:1.4rem;cursor:pointer;text-align:left;display:flex;align-items:center;gap:1rem">';
+    html += '<span style="font-size:2.2rem">🇬🇧</span><div><div style="font-family:serif;font-size:1.2rem;color:#e8e0d0">Inglese</div><div style="font-family:monospace;font-size:0.68rem;color:#666;margin-top:0.2rem">My Vocabulary</div></div>';
+    html += '</button>';
+    html += '</div></div></div>';
+    document.getElementById("app").innerHTML = html;
+    return;
+  }
+
   const total = totalWords();
   const activeCat = CATEGORIES.find(c=>c.id===state.activeTab);
   const words = filteredWords();
@@ -618,7 +667,7 @@ function render() {
 
   // HEADER
   html += '<div class="header"><div class="header-top">';
-  html += '<div><div class="app-title">Mon Vocabulaire</div><div class="app-subtitle">'+total+' '+(total===1?"parola":"parole")+' salvate</div></div>';
+  html += '<div><div class="app-title">'+LC().appTitle+'</div><div class="app-subtitle">'+total+' '+(total===1?"parola":"parole")+' salvate</div></div>';
   html += '<div class="header-actions">';
   html += '<input class="search-field" type="text" placeholder="cerca…" value="'+esc(state.search)+'" oninput="state.search=this.value;render()" >';
   html += '<button class="btn-icon" onclick="state.showImportExport=true;render()">⇅ Salva/Carica</button>';
@@ -626,6 +675,7 @@ function render() {
   html += '<button class="btn-export-list" onclick="downloadList()">📄 PDF</button>';
   html += '<button class="btn-challenge" onclick="startChallenge()">🎯 Le mie parole</button>';
   html += '<button class="btn-challenge" style="border-color:#7ec9a055;color:#7ec9a0" onclick="startChallengeNew()">🌱 Parole nuove</button>';
+  html += '<button class="btn-icon" onclick="state.lang=null;render()">'+LC().flag+'</button>';
   html += '<button class="btn-icon" onclick="state.showSettings=true;render()">⚙</button>';
   html += '</div></div></div>';
 
@@ -633,7 +683,7 @@ function render() {
   if (!state.search) {
     html += '<div class="tabs">';
     CATEGORIES.forEach(cat => {
-      const cnt = state.vocab[cat.id].length;
+      const cnt = state.vocab[state.lang][cat.id].length;
       const active = cat.id===state.activeTab?" active":"";
       html += '<button class="tab'+active+'" style="color:'+(active?cat.color:"#555")+'" onclick="state.activeTab=\''+cat.id+'\';state.warning=null;render()">';
       html += cat.emoji+" "+cat.label+(cnt>0?'<span class="tab-count">('+cnt+')</span>':""+'')+'</button>';
@@ -646,7 +696,7 @@ function render() {
     html += '<div style="padding:1rem 1.2rem">';
     // mode toggle
     html += '<div class="mode-toggle">';
-    html += '<button class="mode-btn'+(state.mode==="fr"?" active":"")+'" onclick="state.mode=\'fr\';state.warning=null;render()">🇫🇷 Inserisci in francese</button>';
+    html += '<button class="mode-btn'+(state.mode==="fr"?" active":"")+'" onclick="state.mode=\'fr\';state.warning=null;render()">'+LC().flag+' '+LC().inputMode_fr+'</button>';
     html += '<button class="mode-btn'+(state.mode==="it"?" active":"")+'" onclick="state.mode=\'it\';state.warning=null;render()">🇮🇹 Inserisci in italiano</button>';
     html += '</div>';
     html += '<div class="form-box">';
@@ -665,7 +715,7 @@ function render() {
     } else {
       // French mode
       html += '<div class="form-row">';
-      html += '<input class="field" id="frWordInput" type="text" placeholder="Parola francese *" value="'+esc(state.form.word)+'"'
+      html += '<input class="field" id="frWordInput" type="text" placeholder="Parola in '+LC().target+' *" value="'+esc(state.form.word)+'"'
             + ' oninput="state.form.word=this.value;state.warning=null;document.getElementById(\'btnGenFr\').disabled=!this.value.trim()||'+state.generating+'"'
             + ' onkeydown="if(event.key===\'Enter\')addWord()">';
       html += '<button id="btnGenFr" class="btn-generate" onclick="generateFromFrench()" '+((!state.form.word.trim()||state.generating)?"disabled":"")+' >';
