@@ -92,6 +92,13 @@
   .challenge-msg { font-family: 'Source Code Pro', monospace; font-size: 0.78rem; color: #888; }
   .answer-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
   .answer-correct { color: #7ec9a0; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; margin-top: 0.3rem; }
+  .btn-text { background: #1e1c18; border: 1px solid #c97eb855; color: #c97eb8; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+  .text-input-area { background: #0a0908; border: 1px solid #2a2820; border-radius: 6px; padding: 0.8rem; color: #c8c0b0; font-family: monospace; font-size: 0.8rem; outline: none; width: 100%; resize: vertical; min-height: 140px; line-height: 1.6; }
+  .text-input-area:focus { border-color: #c97eb8; }
+  .word-level { font-family: monospace; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.1rem 0.35rem; border-radius: 3px; }
+  .level-b2 { color: #d4a853; background: #d4a85318; }
+  .level-c1 { color: #c97eb8; background: #c97eb818; }
+  .level-c2 { color: #7eb8c9; background: #7eb8c918; }
   .btn-camera { background: #1e1c18; border: 1px solid #7eb8c955; color: #7eb8c9; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
   .photo-preview { width: 100%; max-height: 280px; object-fit: contain; border-radius: 6px; border: 1px solid #2a2820; margin-bottom: 1rem; background: #0a0908; }
   .upload-zone { border: 2px dashed #2a2820; border-radius: 8px; padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s; }
@@ -162,6 +169,7 @@ let state = {
   showDeleteConfirm: null,
   showWordModal: null,   // { word object, loading, result }
   showChallenge: null,
+  showTextAnalysis: null,   // { step: "input"|"loading"|"result", text, pdfBase64, words }
   showPhotoAnalysis: null, // { step: "upload"|"ocr-loading"|"select"|"analyze-loading"|"result", image, ocrText, sentences, selectedSentence, analysis }
   importText: "",
   apiKey: "",
@@ -396,6 +404,97 @@ function handlePhotoSelected(input) {
     }
   };
   reader.readAsDataURL(file);
+}
+
+// ── TEXT ANALYSIS WORKFLOW
+function openTextAnalysis() {
+  if (!state.apiKey) { showToast("⚙ Inserisci la chiave API nelle impostazioni", "error"); return; }
+  state.showTextAnalysis = { step:"input", text:"", pdfBase64:null, pdfMediaType:null };
+  render();
+}
+
+function handlePdfSelected(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  showToast("PDF caricato, estraggo testo…", "info");
+  const reader = new FileReader();
+  reader.onerror = () => showToast("Errore nella lettura del PDF", "error");
+  reader.onload = (e) => {
+    const base64 = e.target.result.split(",")[1];
+    state.showTextAnalysis = { step:"loading", text:"", pdfBase64:base64, pdfMediaType:"application/pdf" };
+    render();
+    analyzeTextOrPdf();
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzeTextOrPdf() {
+  const ta = state.showTextAnalysis;
+  if (!ta) return;
+  state.showTextAnalysis = { ...ta, step:"loading" };
+  render();
+  try {
+    const lang = LC();
+    let result;
+    if (ta.pdfBase64) {
+      // PDF path: use vision API to extract + analyze in one call
+      result = await callClaudeWithImage(ta.pdfBase64, ta.pdfMediaType,
+        'Leggi questo PDF ed estrai le parole o espressioni in '+lang.target+' di livello B2, C1 o C2 (non parole comuni). '+
+        'Per ciascuna rispondi SOLO JSON senza markdown: {"words":[{"word":"forma base","translation":"italiano","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","level":"B2|C1|C2","gender":"maschile|femminile|null","plural":"null o stringa","feminine":"null o stringa","usage":"comune|informale|formale|raro","example1_fr":"frase esempio 1 in '+lang.target+'","example2_fr":"frase esempio 2 in '+lang.target+'"}]} '+
+        'Includi max 25 parole, le più utili e interessanti.'
+      );
+    } else {
+      // Plain text path
+      const truncated = ta.text.slice(0, 4000);
+      result = await callClaude(
+        'Analizza questo testo in '+lang.target+' e trova le parole o espressioni di livello B2, C1 o C2 (non parole comuni o semplici). '+
+        'Testo: """'+truncated+'""" '+
+        'Rispondi SOLO JSON senza markdown: {"words":[{"word":"forma base","translation":"traduzione italiana","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","level":"B2|C1|C2","gender":"maschile o femminile solo se sostantivo altrimenti null","plural":"null o stringa","feminine":"null o stringa","usage":"comune|informale|formale|raro","example1_fr":"frase esempio 1 in '+lang.target+'","example2_fr":"frase esempio 2 in '+lang.target+'"}]} '+
+        'Includi max 25 parole, le più utili e interessanti. Ordina per livello (B2 prima).'
+      );
+    }
+    const parsed = JSON.parse(result.replace(/```json|```/g,"").trim());
+    state.showTextAnalysis = { ...ta, step:"result", words: parsed.words || [] };
+    render();
+  } catch(e) {
+    showToast(e.message === "no-key" ? "⚙ Inserisci la chiave API" : "Errore analisi: "+e.message, "error");
+    state.showTextAnalysis = { ...ta, step:"input" };
+    render();
+  }
+}
+
+function addWordFromText(wIndex) {
+  const ta = state.showTextAnalysis;
+  if (!ta || !ta.words) return;
+  const w = ta.words[wIndex];
+  if (!w || w._added) return;
+  const catId = CATEGORIES.find(c=>c.id===w.category) ? w.category : "altro";
+  const entry = {
+    id: Date.now() + wIndex,
+    word:        w.word        || "",
+    translation: w.translation || "",
+    gender:      w.gender      || "",
+    plural:      w.plural      || "",
+    feminine:    w.feminine    || "",
+    usage:       w.usage       || "",
+    example:     [w.example1_fr, w.example2_fr].filter(Boolean).join(" — "),
+    addedAt:     new Date().toLocaleDateString("it-IT"),
+  };
+  state.vocab[state.lang][catId].push(entry);
+  saveVocab();
+  w._added = true;
+  showToast('"'+entry.word+'" aggiunto a '+CATEGORIES.find(c=>c.id===catId).label+'!');
+  render();
+}
+
+function addAllWordsFromText() {
+  const ta = state.showTextAnalysis;
+  if (!ta || !ta.words) return;
+  let count = 0;
+  ta.words.forEach((w, i) => {
+    if (!w._added) { addWordFromText(i); count++; }
+  });
+  if (count === 0) showToast("Tutte già aggiunte!", "info");
 }
 
 function backToSentenceSelect() {
@@ -671,6 +770,7 @@ function render() {
   html += '<div class="header-actions">';
   html += '<input class="search-field" type="text" placeholder="cerca…" value="'+esc(state.search)+'" oninput="state.search=this.value;render()" >';
   html += '<button class="btn-icon" onclick="state.showImportExport=true;render()">⇅ Salva/Carica</button>';
+  html += '<button class="btn-text" onclick="openTextAnalysis()">📝 Testo</button>';
   html += '<button class="btn-camera" onclick="openPhotoAnalysis()">📷 Foto</button>';
   html += '<button class="btn-export-list" onclick="downloadList()">📄 PDF</button>';
   html += '<button class="btn-challenge" onclick="startChallenge()">🎯 Le mie parole</button>';
@@ -801,6 +901,75 @@ function render() {
       html += '<div class="ai-result">'+esc(m.result)+'</div>';
     }
     html += '<div class="modal-actions"><button class="btn-add" onclick="state.showWordModal=null;render()">Chiudi</button></div>';
+    html += '</div></div>';
+  }
+
+  // TEXT ANALYSIS MODAL
+  if (state.showTextAnalysis) {
+    const ta = state.showTextAnalysis;
+    html += '<div class="overlay" onclick="if(event.target===this&&ta.step!==\'loading\'){state.showTextAnalysis=null;render()}">';
+    html += '<div class="modal" style="max-width:580px" onclick="event.stopPropagation()">';
+
+    if (ta.step === "input") {
+      html += '<div class="modal-title">📝 Analizza un testo</div>';
+      html += '<div class="modal-subtitle">Incolla un testo in '+LC().target+' oppure carica un PDF — trovo le parole di livello B2, C1 e C2 da aggiungere al tuo vocabolario.</div>';
+      html += '<textarea class="text-input-area" id="textInputArea" placeholder="Incolla qui il testo in '+LC().target+'…" oninput="state.showTextAnalysis.text=this.value">'+esc(ta.text)+'</textarea>';
+      html += '<div style="display:flex;align-items:center;gap:0.5rem;margin:0.6rem 0">';
+      html += '<div style="flex:1;height:1px;background:#1e1c18"></div>';
+      html += '<span style="font-family:monospace;font-size:0.65rem;color:#444;letter-spacing:0.1em">oppure</span>';
+      html += '<div style="flex:1;height:1px;background:#1e1c18"></div></div>';
+      html += '<label for="pdfInput" style="display:flex;align-items:center;gap:0.6rem;background:#141210;border:1px dashed #2a2820;border-radius:6px;padding:0.8rem 1rem;cursor:pointer;font-family:monospace;font-size:0.75rem;color:#666">';
+      html += '<span style="font-size:1.3rem">📎</span> Carica un file PDF';
+      html += '</label>';
+      html += '<input id="pdfInput" type="file" accept="application/pdf" style="display:none">';
+      html += '<div class="modal-actions" style="margin-top:0.8rem">';
+      html += '<button class="btn-ghost" onclick="state.showTextAnalysis=null;render()">Annulla</button>';
+      html += '<button class="btn-add" onclick="analyzeTextOrPdf()" '+(ta.text.trim()?"":"disabled")+'>✨ Analizza</button>';
+      html += '</div>';
+
+    } else if (ta.step === "loading") {
+      html += '<div class="modal-title">📝 Analisi in corso…</div>';
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c97eb8;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner" style="border-top-color:#c97eb8"></span> Cerco le parole difficili nel testo…</div>';
+
+    } else if (ta.step === "result") {
+      const added = (ta.words||[]).filter(w=>w._added).length;
+      const total_w = (ta.words||[]).length;
+      html += '<div class="modal-title">📝 Parole trovate</div>';
+      html += '<div class="modal-subtitle">'+total_w+' parole di livello B2+ — aggiungi quelle che vuoi al vocabolario.</div>';
+      if (total_w === 0) {
+        html += '<div style="font-family:monospace;font-size:0.78rem;color:#555;padding:1rem 0">Nessuna parola difficile trovata nel testo.</div>';
+      } else {
+        // Add all button
+        const allAdded = added === total_w;
+        html += '<div style="display:flex;justify-content:flex-end;margin-bottom:0.8rem">';
+        html += '<button class="btn-add" style="font-size:0.72rem" onclick="addAllWordsFromText()" '+(allAdded?"disabled":"")+'>+ Aggiungi tutte ('+total_w+')</button>';
+        html += '</div>';
+        html += '<div style="max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem">';
+        (ta.words||[]).forEach((w,i) => {
+          const cat = CATEGORIES.find(c=>c.id===w.category);
+          const levelClass = w.level==="C2"?"level-c2":w.level==="C1"?"level-c1":"level-b2";
+          html += '<div class="word-breakdown-item">';
+          html += '<div class="wb-head">';
+          html += '<div style="display:flex;align-items:baseline;gap:0.5rem;flex-wrap:wrap">';
+          html += '<span class="wb-word">'+esc(w.word)+'</span>';
+          html += '<span class="wb-trans">— '+esc(w.translation)+'</span>';
+          html += '<span class="word-level '+levelClass+'">'+esc(w.level||"B2")+'</span>';
+          if (cat) html += '<span class="badge" style="color:'+cat.color+'">'+cat.emoji+' '+cat.label+'</span>';
+          if (w.gender) html += '<span class="badge '+(w.gender==="femminile"?"badge-f":"badge-m")+'">'+(w.gender==="femminile"?"♀ f.":"♂ m.")+'</span>';
+          html += '</div>';
+          html += '<button class="wb-add" '+(w._added?"disabled ":"")+' onclick="addWordFromText('+i+')">'+(w._added?"✓ Aggiunta":"+ Aggiungi")+'</button>';
+          html += '</div>';
+          if (w.example1_fr) html += '<div class="word-example" style="margin-top:0.3rem">« '+esc(w.example1_fr)+' »</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+      html += '<div class="modal-actions" style="margin-top:0.8rem">';
+      html += '<button class="btn-ghost" onclick="state.showTextAnalysis=null;render()">Chiudi</button>';
+      html += '<button class="btn-text" onclick="state.showTextAnalysis={step:\'input\',text:\'\',pdfBase64:null};render()">← Nuovo testo</button>';
+      html += '</div>';
+    }
+
     html += '</div></div>';
   }
 
@@ -995,9 +1164,21 @@ function wirePhotoOverlay() {
       if (e.target === overlay) { state.showPhotoAnalysis = null; render(); }
     });
   }
-  const input = document.getElementById("photoInput");
-  if (input) {
-    input.addEventListener("change", function() { handlePhotoSelected(input); }, { once: true });
+  const photoInput = document.getElementById("photoInput");
+  if (photoInput) {
+    photoInput.addEventListener("change", function() { handlePhotoSelected(photoInput); }, { once: true });
+  }
+  const pdfInput = document.getElementById("pdfInput");
+  if (pdfInput) {
+    pdfInput.addEventListener("change", function() { handlePdfSelected(pdfInput); }, { once: true });
+  }
+  const textArea = document.getElementById("textInputArea");
+  if (textArea) {
+    textArea.addEventListener("input", function() {
+      if (state.showTextAnalysis) state.showTextAnalysis.text = textArea.value;
+      const btn = document.querySelector(".modal .btn-add");
+      if (btn) btn.disabled = !textArea.value.trim();
+    });
   }
 }
 
