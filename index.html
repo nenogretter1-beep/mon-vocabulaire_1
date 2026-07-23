@@ -429,36 +429,57 @@ function handlePdfSelected(input) {
 }
 
 async function analyzeTextOrPdf() {
+  // Always read fresh text from DOM first, in case oninput didn't sync
+  const textEl = document.getElementById("textInputArea");
+  if (textEl && state.showTextAnalysis) {
+    state.showTextAnalysis.text = textEl.value;
+  }
+
   const ta = state.showTextAnalysis;
   if (!ta) return;
-  state.showTextAnalysis = { ...ta, step:"loading" };
+
+  const textToAnalyze = (ta.text || "").trim();
+  if (!ta.pdfBase64 && !textToAnalyze) {
+    showToast("Inserisci del testo prima di analizzare", "info");
+    return;
+  }
+
+  // Save a clean snapshot with the current text
+  const snapshot = { ...ta, text: textToAnalyze, step:"loading" };
+  state.showTextAnalysis = snapshot;
   render();
+
   try {
     const lang = LC();
-    let result;
-    if (ta.pdfBase64) {
-      // PDF path: use vision API to extract + analyze in one call
-      result = await callClaudeWithImage(ta.pdfBase64, ta.pdfMediaType,
-        'Leggi questo PDF ed estrai le parole o espressioni in '+lang.target+' di livello B2, C1 o C2 (non parole comuni). '+
-        'Per ciascuna rispondi SOLO JSON senza markdown: {"words":[{"word":"forma base","translation":"italiano","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","level":"B2|C1|C2","gender":"maschile|femminile|null","plural":"null o stringa","feminine":"null o stringa","usage":"comune|informale|formale|raro","example1_fr":"frase esempio 1 in '+lang.target+'","example2_fr":"frase esempio 2 in '+lang.target+'"}]} '+
-        'Includi max 25 parole, le più utili e interessanti.'
+    let resultText;
+    if (snapshot.pdfBase64) {
+      resultText = await callClaudeWithImage(snapshot.pdfBase64, snapshot.pdfMediaType,
+        'Leggi questo PDF ed estrai le parole o espressioni in '+lang.target+' di livello B2, C1 o C2 (escludi parole comuni). '+
+        'Rispondi SOLO con un oggetto JSON valido, niente altro: {"words":[{"word":"forma base","translation":"traduzione italiana","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","level":"B2|C1|C2","gender":"maschile|femminile|null","plural":"null","feminine":"null","usage":"comune|informale|formale|raro","example1_fr":"esempio 1","example2_fr":"esempio 2"}]}. Max 25 parole.'
       );
     } else {
-      // Plain text path
-      const truncated = ta.text.slice(0, 4000);
-      result = await callClaude(
-        'Analizza questo testo in '+lang.target+' e trova le parole o espressioni di livello B2, C1 o C2 (non parole comuni o semplici). '+
-        'Testo: """'+truncated+'""" '+
-        'Rispondi SOLO JSON senza markdown: {"words":[{"word":"forma base","translation":"traduzione italiana","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","level":"B2|C1|C2","gender":"maschile o femminile solo se sostantivo altrimenti null","plural":"null o stringa","feminine":"null o stringa","usage":"comune|informale|formale|raro","example1_fr":"frase esempio 1 in '+lang.target+'","example2_fr":"frase esempio 2 in '+lang.target+'"}]} '+
-        'Includi max 25 parole, le più utili e interessanti. Ordina per livello (B2 prima).'
+      const truncated = snapshot.text.slice(0, 4000);
+      resultText = await callClaude(
+        'Analizza questo testo in '+lang.target+' e trova parole/espressioni di livello B2, C1 o C2 (non parole comuni). '+
+        'Testo: ---\n'+truncated+'\n--- '+
+        'Rispondi SOLO con un oggetto JSON valido, niente altro: {"words":[{"word":"forma base","translation":"traduzione italiana","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","level":"B2|C1|C2","gender":"maschile|femminile se sostantivo altrimenti null","plural":"null o forma plurale","feminine":"null o forma femminile","usage":"comune|informale|formale|raro","example1_fr":"frase esempio 1 in '+lang.target+'","example2_fr":"frase esempio 2 in '+lang.target+'"}]}. Max 25 parole, le più utili. Ordina B2 prima.'
       );
     }
-    const parsed = JSON.parse(result.replace(/```json|```/g,"").trim());
-    state.showTextAnalysis = { ...ta, step:"result", words: parsed.words || [] };
+
+    // Try to extract JSON even if Claude added extra text
+    const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("Risposta non in formato JSON: "+resultText.slice(0,100));
+    const parsed = JSON.parse(jsonMatch[0]);
+    const words = parsed.words || [];
+    if (words.length === 0) showToast("Nessuna parola B2+ trovata nel testo", "info");
+    state.showTextAnalysis = { ...snapshot, step:"result", words };
     render();
   } catch(e) {
-    showToast(e.message === "no-key" ? "⚙ Inserisci la chiave API" : "Errore analisi: "+e.message, "error");
-    state.showTextAnalysis = { ...ta, step:"input" };
+    const msg = e.message === "no-key"
+      ? "⚙ Inserisci la chiave API nelle impostazioni"
+      : "Errore: " + e.message;
+    showToast(msg, "error");
+    state.showTextAnalysis = { ...snapshot, step:"input" };
     render();
   }
 }
