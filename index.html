@@ -445,6 +445,7 @@ async function startFlashCards(mode) {
       cards = allWords.sort(() => Math.random() - 0.5).slice(0, 15).map(w => ({
         word: w.word, translation: w.translation, example: w.example ? w.example.split(" — ")[0] : "",
         gender: w.gender, plural: w.plural, feminine: w.feminine, usage: w.usage,
+        imageQuery: encodeURIComponent(w.word.split(" ")[0]),
       }));
       state.showFlashCards = { step:"review", mode, cards, index:0, flipped:false, results:[] };
       render();
@@ -457,7 +458,7 @@ async function startFlashCards(mode) {
         'Crea 10 flash card con parole utili in '+lang.target+' che non conosco ancora. '+
         'Parole da escludere: '+knownStr+'. '+
         'Scegli parole di uso quotidiano, livello B1-B2. '+
-        'Rispondi SOLO JSON: {"cards":[{"word":"parola in '+lang.target+'","translation":"italiano","example":"frase breve in '+lang.target+'","usage":"comune|informale|formale|raro"}]}',
+        'Rispondi SOLO JSON: {"cards":[{"word":"parola in '+lang.target+'","translation":"italiano","example":"frase breve in '+lang.target+'","usage":"comune|informale|formale|raro","imageQuery":"parola chiave in inglese per cercare immagine rappresentativa (1-2 parole)"}]}',
         1200
       );
       const jsonMatch = resultText.match(/\{[\s\S]*\}/);
@@ -493,20 +494,38 @@ function answerCard(knew) {
   render();
 }
 
-function addCardToVocab(card) {
+async function addCardToVocab(card) {
   if (!card || card._added) return;
-  const catId = "altro"; // default — no category info for new-word cards
-  const entry = {
-    id: Date.now(),
-    word: card.word, translation: card.translation,
-    gender:"", plural:"", feminine:"", usage: card.usage||"",
-    example: card.example||"",
-    addedAt: new Date().toLocaleDateString("it-IT"),
-  };
-  state.vocab[state.lang][catId].push(entry);
-  saveVocab();
-  card._added = true;
-  showToast('"'+card.word+'" aggiunto!');
+  card._adding = true; render();
+  try {
+    const lang = LC();
+    const resultText = await callClaude(
+      'Per la parola '+lang.target+' "'+card.word+'" (trad: "'+card.translation+'"), dimmi la categoria grammaticale e altre info. '+
+      'SOLO JSON: {"category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","gender":"maschile|femminile|null","plural":"null o stringa","feminine":"null o stringa","usage":"comune|informale|formale|raro"}'
+    );
+    const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+    const info = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    const catId = CATEGORIES.find(c=>c.id===info.category) ? info.category : "altro";
+    const entry = {
+      id: Date.now(),
+      word: card.word, translation: card.translation,
+      gender: info.gender||"", plural: info.plural||"", feminine: info.feminine||"",
+      usage: info.usage||card.usage||"",
+      example: card.example||"",
+      addedAt: new Date().toLocaleDateString("it-IT"),
+    };
+    state.vocab[state.lang][catId].push(entry);
+    saveVocab();
+    card._added = true; card._adding = false;
+    showToast('"'+card.word+'" aggiunto a '+CATEGORIES.find(c=>c.id===catId).label+'!');
+  } catch(e) {
+    // Fallback: add to "altro" without AI
+    const entry = { id:Date.now(), word:card.word, translation:card.translation, gender:"", plural:"", feminine:"", usage:card.usage||"", example:card.example||"", addedAt:new Date().toLocaleDateString("it-IT") };
+    state.vocab[state.lang]["altro"].push(entry);
+    saveVocab();
+    card._added = true; card._adding = false;
+    showToast('"'+card.word+'" aggiunto!');
+  }
   render();
 }
 
@@ -565,8 +584,8 @@ async function analyzeTextOrPdf() {
     if (snapshot.pdfBase64) {
       dbg("Percorso PDF");
       resultText = await callClaudeWithImage(snapshot.pdfBase64, snapshot.pdfMediaType,
-        'Leggi questo PDF ed estrai le parole o espressioni in '+lang.target+' di livello B2, C1 o C2 (escludi parole comuni). '+
-        'Rispondi SOLO con un oggetto JSON valido, niente altro: {"words":[{"word":"forma base","translation":"traduzione italiana","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","level":"B2|C1|C2","gender":"maschile|femminile|null","plural":"null","feminine":"null","usage":"comune|informale|formale|raro","example1_fr":"esempio 1","example2_fr":"esempio 2"}]}. Max 25 parole.'
+        'Leggi questo documento ed estrai le parole o espressioni in '+lang.target+' di livello B2, C1 o C2 (non parole comuni o frequentissime). '+
+        'Rispondi SOLO con un oggetto JSON valido senza nient’altro attorno: {"words":[{"word":"forma base","translation":"traduzione italiana","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","level":"B2|C1|C2","gender":"maschile|femminile se sostantivo altrimenti null","plural":"null o plurale","feminine":"null o femminile","usage":"comune|informale|formale|raro","example1_fr":"frase in '+lang.target+'","example2_fr":"altra frase in '+lang.target+'"}]}. Includi 10-25 parole, le più interessanti e utili.'
       );
     } else {
       dbg("Percorso testo, lunghezza: "+textToAnalyze.length);
@@ -1075,25 +1094,38 @@ function render() {
     } else if (fc.step === "review") {
       const card = fc.cards[fc.index];
       const pct = Math.round(fc.index / fc.cards.length * 100);
+      const imgSeed = fc.index + 1;
+      const imgQ = card.imageQuery || encodeURIComponent(card.word.split(" ")[0]);
+      // Use Unsplash Source (free, no key) — falls back gracefully if no image
+      const imgUrl = "https://source.unsplash.com/320x180/?"+imgQ;
       html += '<div class="fc-progress">Carta '+(fc.index+1)+' di '+fc.cards.length+'</div>';
       html += '<div class="fc-bar"><div class="fc-bar-fill" style="width:'+pct+'%"></div></div>';
 
       if (!fc.flipped) {
-        // Front — show word
+        // Front — show image + word
         html += '<div class="flashcard" onclick="flipCard()">';
+        html += '<img src="'+imgUrl+'" alt="" style="width:100%;max-height:130px;object-fit:cover;border-radius:6px;margin-bottom:0.8rem;opacity:0.85" onerror="this.style.display=\'none\'">';
         html += '<div class="fc-prompt">Come si traduce?</div>';
         html += '<div class="fc-word">'+esc(card.word)+'</div>';
         if (card.gender) html += '<div class="fc-sub">'+(card.gender==="femminile"?"♀ femminile":"♂ maschile")+(card.plural?" · pl. "+esc(card.plural):"")+'</div>';
         html += '<div class="fc-hint">👆 Tocca per vedere la risposta</div>';
         html += '</div>';
       } else {
-        // Back — show translation
+        // Back — show translation + add button
         html += '<div class="flashcard flipped" onclick="flipCard()">';
         html += '<div class="fc-prompt">'+esc(card.word)+'</div>';
         html += '<div class="fc-translation">'+esc(card.translation)+'</div>';
         if (card.feminine) html += '<div class="fc-sub">♀ '+esc(card.feminine)+'</div>';
-        if (card.example) html += '<div class="fc-example">« '+esc(card.example.split(" — ")[0])+(card.example.includes(" — ")?" / "+card.example.split(" — ")[1]:"")+'»</div>';
+        if (card.example) html += '<div class="fc-example">« '+esc(card.example.split(" — ")[0])+' »</div>';
         html += '</div>';
+        // Add to vocab button (shown on back, for both modes)
+        if (!card._added && !card._adding) {
+          html += '<button class="wb-add" style="width:100%;padding:0.5rem;margin-bottom:0.6rem;border-radius:6px;font-size:0.75rem" onclick="addCardToVocab(state.showFlashCards.cards['+fc.index+'])">+ Aggiungi al vocabolario</button>';
+        } else if (card._adding) {
+          html += '<div style="font-family:monospace;font-size:0.7rem;color:#c8a84a;margin-bottom:0.6rem;text-align:center"><span class="spinner"></span> Salvataggio…</div>';
+        } else {
+          html += '<div style="font-family:monospace;font-size:0.7rem;color:#7ec9a0;margin-bottom:0.6rem;text-align:center">✓ Già nel vocabolario</div>';
+        }
         html += '<div class="fc-buttons">';
         html += '<button class="fc-btn-no" onclick="answerCard(false)">✗ Non lo sapevo</button>';
         html += '<button class="fc-btn-yes" onclick="answerCard(true)">✓ Lo sapevo</button>';
@@ -1415,5 +1447,6 @@ function wirePhotoOverlay() {
 loadState();
 render();
 </script>
+<div style="position:fixed;bottom:0.5rem;right:0.8rem;font-family:monospace;font-size:0.55rem;color:#2a2820;letter-spacing:0.08em;pointer-events:none;user-select:none">v2.0</div>
 </body>
 </html>
