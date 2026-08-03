@@ -92,6 +92,22 @@
   .challenge-msg { font-family: 'Source Code Pro', monospace; font-size: 0.78rem; color: #888; }
   .answer-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
   .answer-correct { color: #7ec9a0; font-family: 'Source Code Pro', monospace; font-size: 0.75rem; margin-top: 0.3rem; }
+  .btn-flash { background: #1e1c18; border: 1px solid #7ec9a055; color: #7ec9a0; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+  .flashcard { background: #1a1814; border: 1px solid #2a2820; border-radius: 10px; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s; user-select: none; margin-bottom: 1rem; }
+  .flashcard:hover { border-color: #3a3828; }
+  .flashcard.flipped { background: #141210; border-color: #d4a85366; }
+  .fc-prompt { font-family: monospace; font-size: 0.65rem; color: #555; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.8rem; }
+  .fc-word { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: #f0e8d8; margin-bottom: 0.4rem; }
+  .fc-sub { font-family: monospace; font-size: 0.75rem; color: #888; }
+  .fc-translation { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: #d4a853; margin-bottom: 0.4rem; }
+  .fc-example { font-style: italic; font-size: 0.8rem; color: #5a5248; margin-top: 0.6rem; }
+  .fc-hint { font-family: monospace; font-size: 0.7rem; color: #444; margin-top: 0.8rem; }
+  .fc-buttons { display: flex; gap: 0.6rem; justify-content: center; width: 100%; }
+  .fc-btn-no  { background: #c97e7e22; border: 1px solid #c97e7e; color: #c97e7e; border-radius: 6px; padding: 0.7rem 1.4rem; cursor: pointer; font-family: monospace; font-size: 0.8rem; flex: 1; }
+  .fc-btn-yes { background: #7ec9a022; border: 1px solid #7ec9a0; color: #7ec9a0; border-radius: 6px; padding: 0.7rem 1.4rem; cursor: pointer; font-family: monospace; font-size: 0.8rem; flex: 1; }
+  .fc-progress { font-family: monospace; font-size: 0.65rem; color: #555; letter-spacing: 0.12em; margin-bottom: 0.8rem; text-align: center; }
+  .fc-bar { background: #1a1814; border-radius: 3px; height: 4px; width: 100%; margin-bottom: 1rem; overflow: hidden; }
+  .fc-bar-fill { background: #d4a853; height: 100%; border-radius: 3px; transition: width 0.3s; }
   .btn-text { background: #1e1c18; border: 1px solid #c97eb855; color: #c97eb8; border-radius: 4px; padding: 0.45rem 0.8rem; font-family: 'Source Code Pro', monospace; font-size: 0.68rem; cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
   .text-input-area { background: #0a0908; border: 1px solid #2a2820; border-radius: 6px; padding: 0.8rem; color: #c8c0b0; font-family: monospace; font-size: 0.8rem; outline: none; width: 100%; resize: vertical; min-height: 140px; line-height: 1.6; }
   .text-input-area:focus { border-color: #c97eb8; }
@@ -169,6 +185,7 @@ let state = {
   showDeleteConfirm: null,
   showWordModal: null,   // { word object, loading, result }
   showChallenge: null,
+  showFlashCards: null,     // { step: 'setup'|'review', mode:'mine'|'new', cards:[], index:0, flipped:false, results:[] }
   showTextAnalysis: null,   // { step: "input"|"loading"|"result", text, pdfBase64, words }
   showPhotoAnalysis: null, // { step: "upload"|"ocr-loading"|"select"|"analyze-loading"|"result", image, ocrText, sentences, selectedSentence, analysis }
   importText: "",
@@ -208,7 +225,7 @@ function showToast(msg, type="success") {
 }
 
 // ── API
-async function callClaude(prompt) {
+async function callClaude(prompt, maxTokens) {
   if (!state.apiKey) throw new Error("no-key");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -218,11 +235,13 @@ async function callClaude(prompt) {
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true"
     },
-    body: JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens:1000, messages:[{role:"user",content:prompt}] })
+    body: JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens: maxTokens||1000, messages:[{role:"user",content:prompt}] })
   });
-  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e?.error?.message || "API error " + res.status); }
   const data = await res.json();
-  return (data.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+  if (!res.ok) throw new Error((data?.error?.message || "API error "+res.status)+" ["+res.status+"]");
+  const text = (data.content||[]).map(b=>b.text||"").join("");
+  if (!text) throw new Error("Risposta vuota dall’API");
+  return text.replace(/```json|```/g,"").trim();
 }
 
 async function callClaudeJSON(prompt) {
@@ -407,6 +426,90 @@ function handlePhotoSelected(input) {
 }
 
 // ── TEXT ANALYSIS WORKFLOW
+// ── FLASH CARDS
+function openFlashCards() {
+  if (!state.apiKey) { showToast("⚙ Inserisci la chiave API nelle impostazioni", "error"); return; }
+  state.showFlashCards = { step:"setup" };
+  render();
+}
+
+async function startFlashCards(mode) {
+  state.showFlashCards = { step:"loading", mode };
+  render();
+  try {
+    let cards = [];
+    if (mode === "mine") {
+      const allWords = Object.values(state.vocab[state.lang]).flatMap(ws => ws);
+      if (allWords.length === 0) { showToast("Aggiungi prima qualche parola!", "info"); state.showFlashCards = { step:"setup" }; render(); return; }
+      // Shuffle and pick up to 15
+      cards = allWords.sort(() => Math.random() - 0.5).slice(0, 15).map(w => ({
+        word: w.word, translation: w.translation, example: w.example ? w.example.split(" — ")[0] : "",
+        gender: w.gender, plural: w.plural, feminine: w.feminine, usage: w.usage,
+      }));
+      state.showFlashCards = { step:"review", mode, cards, index:0, flipped:false, results:[] };
+      render();
+    } else {
+      // New words — ask Claude
+      const lang = LC();
+      const known = Object.values(state.vocab[state.lang]).flatMap(ws => ws.map(w => w.word.toLowerCase()));
+      const knownStr = known.length ? known.slice(0,40).join(", ") : "nessuna";
+      const resultText = await callClaude(
+        'Crea 10 flash card con parole utili in '+lang.target+' che non conosco ancora. '+
+        'Parole da escludere: '+knownStr+'. '+
+        'Scegli parole di uso quotidiano, livello B1-B2. '+
+        'Rispondi SOLO JSON: {"cards":[{"word":"parola in '+lang.target+'","translation":"italiano","example":"frase breve in '+lang.target+'","usage":"comune|informale|formale|raro"}]}',
+        1200
+      );
+      const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("Risposta non JSON");
+      const parsed = JSON.parse(jsonMatch[0]);
+      cards = parsed.cards || [];
+      if (cards.length === 0) throw new Error("Nessuna card generata");
+      state.showFlashCards = { step:"review", mode, cards, index:0, flipped:false, results:[] };
+      render();
+    }
+  } catch(e) {
+    showToast(e.message === "no-key" ? "⚙ Inserisci la chiave API" : "Errore: "+e.message, "error");
+    state.showFlashCards = { step:"setup" };
+    render();
+  }
+}
+
+function flipCard() {
+  if (!state.showFlashCards) return;
+  state.showFlashCards.flipped = !state.showFlashCards.flipped;
+  render();
+}
+
+function answerCard(knew) {
+  const fc = state.showFlashCards;
+  if (!fc || !fc.cards) return;
+  fc.results.push({ word: fc.cards[fc.index].word, knew });
+  fc.index++;
+  fc.flipped = false;
+  if (fc.index >= fc.cards.length) {
+    fc.step = "done";
+  }
+  render();
+}
+
+function addCardToVocab(card) {
+  if (!card || card._added) return;
+  const catId = "altro"; // default — no category info for new-word cards
+  const entry = {
+    id: Date.now(),
+    word: card.word, translation: card.translation,
+    gender:"", plural:"", feminine:"", usage: card.usage||"",
+    example: card.example||"",
+    addedAt: new Date().toLocaleDateString("it-IT"),
+  };
+  state.vocab[state.lang][catId].push(entry);
+  saveVocab();
+  card._added = true;
+  showToast('"'+card.word+'" aggiunto!');
+  render();
+}
+
 function openTextAnalysis() {
   if (!state.apiKey) { showToast("⚙ Inserisci la chiave API nelle impostazioni", "error"); return; }
   state.showTextAnalysis = { step:"input", text:"", pdfBase64:null, pdfMediaType:null };
@@ -444,21 +547,30 @@ async function analyzeTextOrPdf() {
     return;
   }
 
-  // Save a clean snapshot with the current text
-  const snapshot = { ...ta, text: textToAnalyze, step:"loading" };
+  const snapshot = { ...ta, text: textToAnalyze, step:"loading", debugLog:[] };
   state.showTextAnalysis = snapshot;
   render();
 
+  function dbg(msg) {
+    snapshot.debugLog.push(msg);
+    console.log("[TextAnalysis]", msg);
+  }
+
   try {
+    dbg("Avvio analisi, testo: "+textToAnalyze.slice(0,80)+"...");
+    dbg("Lingua: "+LC().target+", apiKey presente: "+(!!state.apiKey));
     const lang = LC();
     let resultText;
+
     if (snapshot.pdfBase64) {
+      dbg("Percorso PDF");
       resultText = await callClaudeWithImage(snapshot.pdfBase64, snapshot.pdfMediaType,
         'Leggi questo PDF ed estrai le parole o espressioni in '+lang.target+' di livello B2, C1 o C2 (escludi parole comuni). '+
         'Rispondi SOLO con un oggetto JSON valido, niente altro: {"words":[{"word":"forma base","translation":"traduzione italiana","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro","level":"B2|C1|C2","gender":"maschile|femminile|null","plural":"null","feminine":"null","usage":"comune|informale|formale|raro","example1_fr":"esempio 1","example2_fr":"esempio 2"}]}. Max 25 parole.'
       );
     } else {
-      const truncated = snapshot.text.slice(0, 4000);
+      dbg("Percorso testo, lunghezza: "+textToAnalyze.length);
+      const truncated = textToAnalyze.slice(0, 4000);
       resultText = await callClaude(
         'Analizza questo testo in '+lang.target+' e trova parole/espressioni di livello B2, C1 o C2 (non parole comuni). '+
         'Testo: ---\n'+truncated+'\n--- '+
@@ -466,20 +578,25 @@ async function analyzeTextOrPdf() {
       );
     }
 
-    // Try to extract JSON even if Claude added extra text
+    dbg("Risposta API ricevuta, lunghezza: "+resultText.length);
+    dbg("Primi 200 chars: "+resultText.slice(0,200));
+
     const jsonMatch = resultText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Risposta non in formato JSON: "+resultText.slice(0,100));
+    if (!jsonMatch) throw new Error("Nessun JSON nella risposta. Risposta: "+resultText.slice(0,200));
     const parsed = JSON.parse(jsonMatch[0]);
     const words = parsed.words || [];
+    dbg("Parole trovate: "+words.length);
     if (words.length === 0) showToast("Nessuna parola B2+ trovata nel testo", "info");
     state.showTextAnalysis = { ...snapshot, step:"result", words };
     render();
   } catch(e) {
+    dbg("ERRORE: "+e.message);
     const msg = e.message === "no-key"
       ? "⚙ Inserisci la chiave API nelle impostazioni"
       : "Errore: " + e.message;
     showToast(msg, "error");
-    state.showTextAnalysis = { ...snapshot, step:"input" };
+    // Show debug log on screen
+    state.showTextAnalysis = { ...snapshot, step:"input", debugInfo: snapshot.debugLog.join("\n") };
     render();
   }
 }
@@ -791,6 +908,7 @@ function render() {
   html += '<div class="header-actions">';
   html += '<input class="search-field" type="text" placeholder="cerca…" value="'+esc(state.search)+'" oninput="state.search=this.value;render()" >';
   html += '<button class="btn-icon" onclick="state.showImportExport=true;render()">⇅ Salva/Carica</button>';
+  html += '<button class="btn-flash" onclick="openFlashCards()">🃏 Flash</button>';
   html += '<button class="btn-text" onclick="openTextAnalysis()">📝 Testo</button>';
   html += '<button class="btn-camera" onclick="openPhotoAnalysis()">📷 Foto</button>';
   html += '<button class="btn-export-list" onclick="downloadList()">📄 PDF</button>';
@@ -925,6 +1043,96 @@ function render() {
     html += '</div></div>';
   }
 
+  // FLASH CARDS MODAL
+  if (state.showFlashCards) {
+    const fc = state.showFlashCards;
+    const isLoading = fc.step === "loading";
+    html += '<div class="overlay" onclick="if(event.target===this&&!'+isLoading+'){state.showFlashCards=null;render()}">';
+    html += '<div class="modal" style="max-width:480px" onclick="event.stopPropagation()">';
+
+    if (fc.step === "setup") {
+      html += '<div class="modal-title">🃏 Flash Card</div>';
+      html += '<div class="modal-subtitle">Scegli con quali parole vuoi allenarti.</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:0.8rem;margin-bottom:1.2rem">';
+      // My words
+      const total = Object.values(state.vocab[state.lang]).reduce((s,a)=>s+a.length,0);
+      html += '<button onclick="startFlashCards(\'mine\')" style="background:#1a1814;border:1px solid #2a2820;border-radius:8px;padding:1.2rem;cursor:pointer;text-align:left;display:flex;align-items:center;gap:1rem">';
+      html += '<span style="font-size:1.8rem">📚</span>';
+      html += '<div><div style="font-family:serif;font-size:1rem;color:#e8e0d0">Le mie parole</div><div style="font-family:monospace;font-size:0.65rem;color:#666;margin-top:0.2rem">'+total+' parole salvate · mischiate a caso</div></div>';
+      html += '</button>';
+      // New words
+      html += '<button onclick="startFlashCards(\'new\')" style="background:#1a1814;border:1px solid #2a2820;border-radius:8px;padding:1.2rem;cursor:pointer;text-align:left;display:flex;align-items:center;gap:1rem">';
+      html += '<span style="font-size:1.8rem">🌱</span>';
+      html += '<div><div style="font-family:serif;font-size:1rem;color:#e8e0d0">Parole nuove</div><div style="font-family:monospace;font-size:0.65rem;color:#666;margin-top:0.2rem">Claude sceglie 10 parole che non conosci ancora</div></div>';
+      html += '</button>';
+      html += '</div>';
+      html += '<div class="modal-actions"><button class="btn-ghost" onclick="state.showFlashCards=null;render()">Annulla</button></div>';
+
+    } else if (fc.step === "loading") {
+      html += '<div class="modal-title">🃏 Preparo le card…</div>';
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#7ec9a0;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner" style="border-top-color:#7ec9a0"></span> Generazione in corso…</div>';
+
+    } else if (fc.step === "review") {
+      const card = fc.cards[fc.index];
+      const pct = Math.round(fc.index / fc.cards.length * 100);
+      html += '<div class="fc-progress">Carta '+(fc.index+1)+' di '+fc.cards.length+'</div>';
+      html += '<div class="fc-bar"><div class="fc-bar-fill" style="width:'+pct+'%"></div></div>';
+
+      if (!fc.flipped) {
+        // Front — show word
+        html += '<div class="flashcard" onclick="flipCard()">';
+        html += '<div class="fc-prompt">Come si traduce?</div>';
+        html += '<div class="fc-word">'+esc(card.word)+'</div>';
+        if (card.gender) html += '<div class="fc-sub">'+(card.gender==="femminile"?"♀ femminile":"♂ maschile")+(card.plural?" · pl. "+esc(card.plural):"")+'</div>';
+        html += '<div class="fc-hint">👆 Tocca per vedere la risposta</div>';
+        html += '</div>';
+      } else {
+        // Back — show translation
+        html += '<div class="flashcard flipped" onclick="flipCard()">';
+        html += '<div class="fc-prompt">'+esc(card.word)+'</div>';
+        html += '<div class="fc-translation">'+esc(card.translation)+'</div>';
+        if (card.feminine) html += '<div class="fc-sub">♀ '+esc(card.feminine)+'</div>';
+        if (card.example) html += '<div class="fc-example">« '+esc(card.example.split(" — ")[0])+(card.example.includes(" — ")?" / "+card.example.split(" — ")[1]:"")+'»</div>';
+        html += '</div>';
+        html += '<div class="fc-buttons">';
+        html += '<button class="fc-btn-no" onclick="answerCard(false)">✗ Non lo sapevo</button>';
+        html += '<button class="fc-btn-yes" onclick="answerCard(true)">✓ Lo sapevo</button>';
+        html += '</div>';
+      }
+      html += '<div class="modal-actions" style="margin-top:0.8rem"><button class="btn-ghost" onclick="state.showFlashCards=null;render()">Abbandona</button></div>';
+
+    } else if (fc.step === "done") {
+      const knew = fc.results.filter(r=>r.knew).length;
+      const tot = fc.results.length;
+      const pct = Math.round(knew/tot*100);
+      const msg = pct===100?"Perfetto! 🌟":pct>=70?"Molto bene! 👍":pct>=40?"Continua così! 💪":"Riprova ancora! 🔄";
+      html += '<div class="modal-title">Sessione completata</div>';
+      html += '<div style="text-align:center;padding:1rem 0">';
+      html += '<div style="font-family:serif;font-size:2.5rem;color:#d4a853;margin-bottom:0.3rem">'+knew+'/'+tot+'</div>';
+      html += '<div style="font-family:monospace;font-size:0.78rem;color:#888;margin-bottom:1.2rem">'+msg+'</div>';
+      // Show results list
+      html += '<div style="text-align:left;max-height:40vh;overflow-y:auto">';
+      fc.results.forEach((r,i) => {
+        const card = fc.cards[i];
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem 0;border-bottom:1px solid #1a1814;font-family:monospace;font-size:0.72rem">';
+        html += '<span style="color:#d8d0c0">'+esc(r.word)+'</span>';
+        html += '<span style="color:'+(r.knew?"#7ec9a0":"#c97e7e")+'">'+(r.knew?"✓":"✗")+'</span>';
+        if (fc.mode === "new" && card && !card._added) {
+          html += '<button class="wb-add" onclick="addCardToVocab(fc.cards['+i+'])">+ Salva</button>';
+        }
+        html += '</div>';
+      });
+      html += '</div></div>';
+      html += '<div class="modal-actions">';
+      html += '<button class="btn-ghost" onclick="state.showFlashCards=null;render()">Chiudi</button>';
+      html += '<button class="btn-flash" onclick="startFlashCards(\''+fc.mode+'\')">🔄 Rigioca</button>';
+      html += '<button class="btn-add" onclick="state.showFlashCards={step:\'setup\'};render()">Cambia modalità</button>';
+      html += '</div>';
+    }
+
+    html += '</div></div>';
+  }
+
   // TEXT ANALYSIS MODAL
   if (state.showTextAnalysis) {
     const ta = state.showTextAnalysis;
@@ -946,6 +1154,7 @@ function render() {
       html += '<div class="modal-actions" style="margin-top:0.8rem">';
       html += '<button class="btn-ghost" onclick="state.showTextAnalysis=null;render()">Annulla</button>';
       html += '<button class="btn-add" onclick="analyzeTextOrPdf()" '+(ta.text.trim()?"":"disabled")+'>✨ Analizza</button>';
+      if (ta.debugInfo) html += '<div style="margin-top:0.8rem;background:#1a0a0a;border:1px solid #c97e7e;border-radius:4px;padding:0.6rem;font-family:monospace;font-size:0.65rem;color:#c97e7e;white-space:pre-wrap">'+esc(ta.debugInfo)+'</div>';
       html += '</div>';
 
     } else if (ta.step === "loading") {
