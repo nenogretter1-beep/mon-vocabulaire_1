@@ -5,8 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Mon Vocab">
-<title>Mon Vocabulaire</title>
+<meta name="apple-mobile-web-app-title" content="Vocabulaire">
+<meta name="application-name" content="Vocabulaire">
+<meta name="theme-color" content="#0f0e0c">
+<meta name="description" content="Il tuo vocabolario personale in francese e inglese">
+<link rel="manifest" href="manifest.json">
+<title>Vocabulaire</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@300;400&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1464,6 +1468,13 @@ function wirePhotoOverlay() {
 
 loadState();
 render();
+
+// ── PWA: register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 <div style="position:fixed;bottom:0.5rem;right:0.8rem;font-family:monospace;font-size:0.55rem;color:#2a2820;letter-spacing:0.08em;pointer-events:none;user-select:none">v2.0</div>
 </body>
