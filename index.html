@@ -381,7 +381,7 @@ async function wordAction(action, wordId) {
 }
 
 function findWord(wordId) {
-  for (const cat of Object.values(state.vocab)) {
+  for (const cat of Object.values(state.vocab[state.lang])) {
     const w = cat.find(w=>w.id===wordId);
     if (w) return w;
   }
@@ -755,29 +755,43 @@ function actionLabel(a) {
 
 // ── DOWNLOAD LIST AS PDF (via print window)
 function downloadList() {
-  const total = Object.values(state.vocab).reduce((s,a)=>s+a.length,0);
+  const totalFr = Object.values(state.vocab.fr).reduce((s,a)=>s+a.length,0);
+  const totalEn = Object.values(state.vocab.en).reduce((s,a)=>s+a.length,0);
+  const total = totalFr + totalEn;
   if (total === 0) { showToast("Nessuna parola da esportare", "info"); return; }
+
   const usageMap = {comune:"● comune", informale:"◐ informale", formale:"◈ formale", raro:"○ raro"};
-  let body = "";
-  CATEGORIES.forEach(cat => {
-    const words = [...(state.vocab[cat.id]||[])].sort((a,b)=>a.word.localeCompare(b.word,'fr'));
-    if (!words.length) return;
-    body += `<div class="category"><div class="cat-title" style="color:${cat.color}">${cat.emoji} ${cat.label} (${words.length})</div>`;
-    words.forEach(w => {
-      body += `<div class="word-entry"><div class="word-head"><span class="word-fr">${w.word}</span>`;
-      if (w.translation) body += `<span class="word-it"> — ${w.translation}</span>`;
-      if (w.gender) body += ` <span class="badge ${w.gender==='femminile'?'badge-f':'badge-m'}">${w.gender==='femminile'?'♀ f.':'♂ m.'}</span>`;
-      if (w.usage) body += ` <span class="badge badge-${w.usage}">${usageMap[w.usage]||w.usage}</span>`;
-      body += `</div>`;
-      if (w.plural||w.feminine) {
-        let x=[]; if(w.plural) x.push('pl. '+w.plural); if(w.feminine) x.push('♀ '+w.feminine);
-        body += `<div class="word-extra">${x.join(' · ')}</div>`;
-      }
-      if (w.example) w.example.split(' — ').filter(Boolean).forEach(ex=>{ body+=`<div class="word-example">« ${ex} »</div>`; });
-      body += `</div>`;
+
+  function buildSection(langVocab, langLabel, langFlag) {
+    const langTotal = Object.values(langVocab).reduce((s,a)=>s+a.length,0);
+    if (langTotal === 0) return "";
+    let html = '<div class="lang-section">';
+    html += '<div class="lang-title">'+langFlag+' '+langLabel+' <span class="lang-count">('+langTotal+' parole)</span></div>';
+    CATEGORIES.forEach(cat => {
+      const words = [...(langVocab[cat.id]||[])].sort((a,b)=>a.word.localeCompare(b.word));
+      if (!words.length) return;
+      html += '<div class="category"><div class="cat-title" style="color:'+cat.color+'">'+cat.emoji+' '+cat.label+' ('+words.length+')</div>';
+      words.forEach(w => {
+        html += '<div class="word-entry"><div class="word-head"><span class="word-fr">'+w.word+'</span>';
+        if (w.translation) html += '<span class="word-it"> — '+w.translation+'</span>';
+        if (w.gender) html += ' <span class="badge '+(w.gender==='femminile'?'badge-f':'badge-m')+'">'+(w.gender==='femminile'?'♀ f.':'♂ m.')+'</span>';
+        if (w.usage) html += ' <span class="badge badge-'+w.usage+'">'+(usageMap[w.usage]||w.usage)+'</span>';
+        html += '</div>';
+        if (w.plural||w.feminine) {
+          let x=[]; if(w.plural) x.push('pl. '+w.plural); if(w.feminine) x.push('♀ '+w.feminine);
+          html += '<div class="word-extra">'+x.join(' · ')+'</div>';
+        }
+        if (w.example) w.example.split(' — ').filter(Boolean).forEach(ex=>{ html+='<div class="word-example">« '+ex+' »</div>'; });
+        html += '</div>';
+      });
+      html += '</div>';
     });
-    body += `</div>`;
-  });
+    html += '</div>';
+    return html;
+  }
+
+  const body = buildSection(state.vocab.fr, "Francese", "🇫🇷")
+             + buildSection(state.vocab.en, "Inglese",  "🇬🇧");
 
   const css = [
     "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@300;400&display=swap');",
@@ -785,7 +799,10 @@ function downloadList() {
     "body{background:#fff;color:#1a1814;font-family:'Playfair Display',Georgia,serif;padding:2cm;max-width:100%}",
     "h1{font-size:1.8rem;font-weight:400;color:#1a1814;margin-bottom:0.2rem}",
     ".subtitle{font-family:monospace;font-size:0.62rem;color:#888;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:2rem;border-bottom:1px solid #ddd;padding-bottom:0.8rem}",
-    ".category{margin-bottom:1.8rem;page-break-inside:avoid}",
+    ".lang-section{margin-bottom:2.5rem}",
+    ".lang-title{font-family:monospace;font-size:0.85rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#1a1814;padding-bottom:0.6rem;border-bottom:3px solid #1a1814;margin-bottom:1.2rem}",
+    ".lang-count{font-weight:400;color:#888}",
+    ".category{margin-bottom:1.5rem;page-break-inside:avoid;padding-left:0.5rem}",
     ".cat-title{font-family:monospace;font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;padding-bottom:0.4rem;border-bottom:2px solid currentColor;margin-bottom:0.8rem;font-weight:600}",
     ".word-entry{padding:0.5rem 0;border-bottom:1px solid #f0ece4;page-break-inside:avoid}",
     ".word-head{display:flex;align-items:baseline;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.1rem}",
@@ -796,19 +813,20 @@ function downloadList() {
     ".word-extra{font-family:monospace;font-size:0.6rem;color:#999;margin-top:0.1rem}",
     ".word-example{font-style:italic;font-size:0.75rem;color:#888;margin-top:0.15rem}",
     ".footer{font-family:monospace;font-size:0.55rem;color:#bbb;margin-top:2rem;padding-top:0.8rem;border-top:1px solid #eee;letter-spacing:0.1em}",
-    "@media print{body{padding:1.5cm} @page{margin:1.5cm}}"
+    "@media print{body{padding:1.5cm} @page{margin:1.5cm} .lang-section{page-break-before:auto}}"
   ].join("\n");
 
   const dateStr = new Date().toLocaleDateString('it-IT');
-  const fullHtml = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Mon Vocabulaire</title><style>' + css + '</style></head><body>'
+  const fullHtml = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Vocabulaire</title><style>'+css+'</style></head><body>'
     + '<h1>Mon Vocabulaire</h1>'
-    + '<div class="subtitle">' + total + ' parole &nbsp;&middot;&nbsp; ' + dateStr + '</div>'
+    + '<div class="subtitle">'+total+' parole totali &nbsp;&middot;&nbsp; '+dateStr+'</div>'
     + body
-    + '<div class="footer">Generato da Mon Vocabulaire &middot; ' + new Date().toLocaleString('it-IT') + '</div>'
-    + '<scr' + 'ipt>window.onload=function(){window.print();}</scr' + 'ipt>'
+    + '<div class="footer">Generato da Vocabulaire v2.0 &middot; '+new Date().toLocaleString('it-IT')+'</div>'
+    + '<scr'+'ipt>window.onload=function(){window.print();}</scr'+'ipt>'
     + '</body></html>';
 
   const win = window.open('','_blank','width=800,height=900');
+  if (!win) { showToast("Popup bloccato — abilita i popup per questo sito", "error"); return; }
   win.document.write(fullHtml);
   win.document.close();
   showToast('Apri la finestra e salva come PDF 📄');
