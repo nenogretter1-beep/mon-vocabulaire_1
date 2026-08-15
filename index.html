@@ -170,6 +170,12 @@ const LANG_CONFIG = {
     promptLang: "inglese", photoPromptLang: "inglese",
     appTitle: "My Vocabulary",
   },
+  de: {
+    name: "Tedesco", flag: "🇩🇪", target: "tedesco", targetNative: "Deutsch",
+    inputMode_fr: "🇩🇪 Inserisci in tedesco", inputMode_it: "🇮🇹 Inserisci in italiano",
+    promptLang: "tedesco", photoPromptLang: "tedesco",
+    appTitle: "Mein Wörterbuch",
+  },
 };
 function LC() { return LANG_CONFIG[state.lang] || LANG_CONFIG.fr; }
 
@@ -178,6 +184,7 @@ let state = {
   vocab: {
     fr: { aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] },
     en: { aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] },
+    de: { aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] },
   },
   activeTab: "sostantivi",
   mode: "fr",
@@ -189,12 +196,13 @@ let state = {
   showDeleteConfirm: null,
   showWordModal: null,   // { word object, loading, result }
   showChallenge: null,
-  showFlashCards: null,     // { step: 'setup'|'review', mode:'mine'|'new', cards:[], index:0, flipped:false, results:[] }
+  showFlashCards: null,
+  showConjugation: null, // { word, lang, loading, result }     // { step: 'setup'|'review', mode:'mine'|'new', cards:[], index:0, flipped:false, results:[] }
   showTextAnalysis: null,   // { step: "input"|"loading"|"result", text, pdfBase64, words }
   showPhotoAnalysis: null, // { step: "upload"|"ocr-loading"|"select"|"analyze-loading"|"result", image, ocrText, sentences, selectedSentence, analysis }
   importText: "",
   apiKey: "",
-  form: { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"" },
+  form: { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"", article:"" },
   itWord: "",
 };
 
@@ -202,7 +210,14 @@ let state = {
 const LANG_STORE = "mon-vocab-lang";
 
 function loadState() {
-  try { const r = localStorage.getItem(STORAGE_KEY); if (r) { const v = JSON.parse(r); state.vocab = v.fr ? v : { fr: v, en: { aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] } }; } } catch(e){}
+  try {
+    const r = localStorage.getItem(STORAGE_KEY);
+    if (r) {
+      const v = JSON.parse(r);
+      const empty = () => ({ aggettivi:[], espressioni:[], sostantivi:[], verbi:[], avverbi:[], altro:[] });
+      state.vocab = v.fr ? { fr: v.fr||empty(), en: v.en||empty(), de: v.de||empty() } : { fr: v, en: empty(), de: empty() };
+    }
+  } catch(e){}
   try { const k = localStorage.getItem(API_KEY_STORE); if (k) state.apiKey = k; } catch(e){}
   // lang is always chosen at startup, never persisted
 }
@@ -293,8 +308,9 @@ async function generateFromFrench() {
   try {
     const catLabel = CATEGORIES.find(c=>c.id===state.activeTab)?.label || state.activeTab;
     const isSost = state.activeTab==="sostantivi", isAgg = state.activeTab==="aggettivi";
-    const extraS = isSost ? '"gender":"maschile o femminile","plural":"plurale francese",' : "";
-    const extraA = isAgg  ? '"feminine":"forma femminile",' : "";
+    const isDe = state.lang==="de";
+    const extraS = isSost ? (isDe ? '"gender":"maschile|femminile|neutro","plural":"plurale tedesco","article":"der|die|das",' : '"gender":"maschile o femminile","plural":"plurale",') : "";
+    const extraA = isAgg  ? (isDe ? '"feminine":"forma femminile","comparative":"comparativo","superlative":"superlativo",' : '"feminine":"forma femminile",') : "";
     const lang = LC();
     const p = await callClaudeJSON(
       'Analizza la parola '+lang.target+' "'+word+'" da inserire in "'+catLabel+'". '+
@@ -313,6 +329,7 @@ async function generateFromFrench() {
       translation: p.translation || state.form.translation,
       gender:   p.gender   || "", plural:   p.plural   || "",
       feminine: p.feminine || "", usage:    p.usage    || "",
+      article:  p.article  || "",
       example:  [p.example1_fr, p.example2_fr].filter(Boolean).join(" — "),
     };
     showToast("Informazioni generate!");
@@ -331,10 +348,10 @@ async function generateFromItalian() {
     const lang2 = LC();
     const p = await callClaudeJSON(
       'Traduci "'+word+'" italiano→'+lang2.target+'. SOLO JSON: {"word_fr":"parola in '+lang2.target+'","translation":"traduzione italiana confermata","category":"aggettivi|espressioni|sostantivi|verbi|avverbi|altro",'+
-      '"gender":null,"plural":null,"feminine":null,"usage":"comune|informale|formale|raro","example1_fr":"esempio 1 in '+lang2.target+'","example2_fr":"esempio 2 in '+lang2.target+'"}'
+      '"gender":null,"plural":null,"feminine":null,"article":'+(state.lang==="de"?'"der|die|das se sostantivo altrimenti null"':"null")+',"usage":"comune|informale|formale|raro","example1_fr":"esempio 1 in '+lang2.target+'","example2_fr":"esempio 2 in '+lang2.target+'"}'
     );
     if (p.category && CATEGORIES.find(c=>c.id===p.category)) state.activeTab = p.category;
-    state.form = { word:p.word_fr||"", translation:p.translation||word, gender:p.gender||"", plural:p.plural||"", feminine:p.feminine||"", usage:p.usage||"", example:[p.example1_fr,p.example2_fr].filter(Boolean).join(" — ") };
+    state.form = { word:p.word_fr||"", translation:p.translation||word, gender:p.gender||"", plural:p.plural||"", feminine:p.feminine||"", usage:p.usage||"", article:p.article||"", example:[p.example1_fr,p.example2_fr].filter(Boolean).join(" — ") };
     showToast("Traduzione pronta! Rivedi e premi Aggiungi.");
   } catch(e) {
     showToast(e.message==="no-key" ? "⚙ Inserisci la chiave API nelle impostazioni" : "Errore: "+(e.message||"traduzione fallita"), "error");
@@ -346,9 +363,13 @@ async function generateFromItalian() {
 function addWord() {
   if (!state.form.word.trim()) return;
   const entry = { id:Date.now(), ...Object.fromEntries(Object.entries(state.form).map(([k,v])=>[k,v.trim()])), addedAt:new Date().toLocaleDateString("it-IT") };
+  // Auto-set article from gender for German if not already set
+  if (state.lang==="de" && !entry.article && entry.gender) {
+    entry.article = entry.gender==="maschile"?"der":entry.gender==="femminile"?"die":entry.gender==="neutro"?"das":"";
+  }
   state.vocab[state.lang][state.activeTab].push(entry);
   saveVocab();
-  state.form = { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"" };
+  state.form = { word:"", translation:"", gender:"", plural:"", feminine:"", usage:"", example:"", article:"" };
   state.itWord = ""; state.warning = null;
   showToast('"'+entry.word+'" aggiunto!');
   render();
@@ -431,6 +452,32 @@ function handlePhotoSelected(input) {
 
 // ── TEXT ANALYSIS WORKFLOW
 // ── FLASH CARDS
+// ── CONJUGATION
+async function showConjugation(wordId) {
+  const w = findWord(wordId);
+  if (!w) return;
+  state.showConjugation = { word: w, loading: true, result: null };
+  render();
+  try {
+    const lang = LC();
+    const isDe = state.lang === "de";
+    const prompt = isDe
+      ? 'Coniuga il verbo tedesco "'+w.word+'" in tutti i tempi principali (Präsens, Präteritum, Perfekt, Futur I). '+
+        'Per ogni tempo mostra tutte le persone (ich, du, er/sie/es, wir, ihr, sie/Sie). '+
+        'Rispondi in testo semplice e leggibile, ben formattato.'
+      : 'Coniuga il verbo '+lang.target+' "'+w.word+'" nei tempi principali: '+
+        (state.lang==="fr" ? 'présent, passé composé, imparfait, futur simple, conditionnel présent, subjonctif présent.' : 'present simple, past simple, present perfect, future simple.')+
+        ' Per ogni tempo mostra tutte le persone. Rispondi in testo semplice e leggibile, ben formattato.';
+    const result = await callClaude(prompt, 1500);
+    state.showConjugation = { word: w, loading: false, result };
+    render();
+  } catch(e) {
+    showToast(e.message === "no-key" ? "⚙ Inserisci la chiave API" : "Errore: "+e.message, "error");
+    state.showConjugation = null;
+    render();
+  }
+}
+
 function openFlashCards() {
   if (!state.apiKey) { showToast("⚙ Inserisci la chiave API nelle impostazioni", "error"); return; }
   state.showFlashCards = { step:"setup" };
@@ -761,7 +808,8 @@ function actionLabel(a) {
 function downloadList() {
   const totalFr = Object.values(state.vocab.fr).reduce((s,a)=>s+a.length,0);
   const totalEn = Object.values(state.vocab.en).reduce((s,a)=>s+a.length,0);
-  const total = totalFr + totalEn;
+  const totalDe = Object.values(state.vocab.de||{}).reduce((s,a)=>s+a.length,0);
+  const total = totalFr + totalEn + totalDe;
   if (total === 0) { showToast("Nessuna parola da esportare", "info"); return; }
 
   const usageMap = {comune:"● comune", informale:"◐ informale", formale:"◈ formale", raro:"○ raro"};
@@ -795,7 +843,8 @@ function downloadList() {
   }
 
   const body = buildSection(state.vocab.fr, "Francese", "🇫🇷")
-             + buildSection(state.vocab.en, "Inglese",  "🇬🇧");
+             + buildSection(state.vocab.en, "Inglese",  "🇬🇧")
+             + buildSection(state.vocab.de, "Tedesco",  "🇩🇪");
 
   const css = [
     "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@300;400&display=swap');",
@@ -933,6 +982,9 @@ function render() {
     html += '<button onclick="state.lang=\'en\';saveLang(\'en\');render()" style="background:#1a1814;border:1px solid #2a2820;border-radius:8px;padding:1.4rem;cursor:pointer;text-align:left;display:flex;align-items:center;gap:1rem">';
     html += '<span style="font-size:2.2rem">🇬🇧</span><div><div style="font-family:serif;font-size:1.2rem;color:#e8e0d0">Inglese</div><div style="font-family:monospace;font-size:0.68rem;color:#666;margin-top:0.2rem">My Vocabulary</div></div>';
     html += '</button>';
+    html += '<button onclick="state.lang=\'de\';render()" style="background:#1a1814;border:1px solid #2a2820;border-radius:8px;padding:1.4rem;cursor:pointer;text-align:left;display:flex;align-items:center;gap:1rem">';
+    html += '<span style="font-size:2.2rem">🇩🇪</span><div><div style="font-family:serif;font-size:1.2rem;color:#e8e0d0">Tedesco</div><div style="font-family:monospace;font-size:0.68rem;color:#666;margin-top:0.2rem">Mein Wörterbuch</div></div>';
+    html += '</button>';
     html += '</div></div></div>';
     document.getElementById("app").innerHTML = html;
     return;
@@ -1017,12 +1069,17 @@ function render() {
     html += '<input class="field" style="margin-bottom:0.5rem" type="text" placeholder="Traduzione italiana" value="'+esc(state.form.translation)+'" oninput="state.form.translation=this.value">';
     if (state.activeTab==="sostantivi") {
       html += '<div class="form-grid">';
-      html += '<input class="field" type="text" placeholder="Genere" value="'+esc(state.form.gender)+'" oninput="state.form.gender=this.value">';
+      if (state.lang==="de") {
+        html += '<input class="field" type="text" placeholder="Articolo (der/die/das)" value="'+esc(state.form.article)+'" oninput="state.form.article=this.value">';
+        html += '<input class="field" type="text" placeholder="Genere (maschile/femminile/neutro)" value="'+esc(state.form.gender)+'" oninput="state.form.gender=this.value">';
+      } else {
+        html += '<input class="field" type="text" placeholder="Genere (maschile/femminile)" value="'+esc(state.form.gender)+'" oninput="state.form.gender=this.value">';
+      }
       html += '<input class="field" type="text" placeholder="Plurale" value="'+esc(state.form.plural)+'" oninput="state.form.plural=this.value">';
       html += '</div>';
     }
     if (state.activeTab==="aggettivi") {
-      html += '<input class="field" style="margin-bottom:0.5rem" type="text" placeholder="Forma femminile" value="'+esc(state.form.feminine)+'" oninput="state.form.feminine=this.value">';
+      if (state.lang!=="en") html += '<input class="field" style="margin-bottom:0.5rem" type="text" placeholder="'+(state.lang==="de"?"Forma femminile / comparativo":"Forma femminile")+'" value="'+esc(state.form.feminine)+'" oninput="state.form.feminine=this.value">';
     }
     html += '<div class="form-row">';
     html += '<input class="field" type="text" placeholder="Esempi d\'uso" value="'+esc(state.form.example)+'" oninput="state.form.example=this.value" onkeydown="if(event.key===\'Enter\')addWord()">';
@@ -1044,9 +1101,14 @@ function render() {
       const examples = w.example ? w.example.split(" — ").filter(Boolean) : [];
       html += '<div class="word-card">';
       html += '<div class="word-head">';
+      if (w.article) html += '<span style="font-family:monospace;font-size:0.78rem;color:#7eb8c9;font-style:italic">'+esc(w.article)+'</span>&nbsp;';
       html += '<span class="word-fr">'+esc(w.word)+'</span>';
       if (w.translation) html += '<span class="word-it">— '+esc(w.translation)+'</span>';
-      if (w.gender) html += '<span class="badge '+(w.gender==="femminile"?"badge-f":"badge-m")+'">'+(w.gender==="femminile"?"♀ f.":"♂ m.")+'</span>';
+      if (w.gender) {
+        const gMap = {maschile:'♂ m.', femminile:'♀ f.', neutro:'◆ n.'};
+        const gClass = {maschile:'badge-m', femminile:'badge-f', neutro:'badge-raro'};
+        html += '<span class="badge '+(gClass[w.gender]||'badge-raro')+'">'+(gMap[w.gender]||w.gender)+'</span>';
+      }
       if (w.plural)   html += '<span class="word-plural">pl. <em>'+esc(w.plural)+'</em></span>';
       if (w.feminine) html += '<span class="word-feminine">♀ <em>'+esc(w.feminine)+'</em></span>';
       if (w.usage)    html += usageBadge(w.usage);
@@ -1059,6 +1121,9 @@ function render() {
       ['sinonimo','contrario','esempi','correggi'].forEach(a => {
         html += '<button class="btn-action" onclick="wordAction(\''+a+'\','+w.id+')">'+actionLabel(a)+'</button>';
       });
+      if (w.cat==="verbi" && (state.lang==="fr"||state.lang==="de")) {
+        html += '<button class="btn-action" style="color:#c97eb8;border-color:#c97eb844" onclick="showConjugation('+w.id+')">⊞ Coniugazione</button>';
+      }
       html += '</div>';
       html += '<button class="btn-del" onclick="state.showDeleteConfirm={catId:\''+w.cat+'\',wordId:'+w.id+',word:\''+esc(w.word)+'\'};render()">✕</button>';
       html += '</div>';
@@ -1066,6 +1131,22 @@ function render() {
       html += '</div>';
     });
     html += '</div>';
+  }
+
+  // CONJUGATION MODAL
+  if (state.showConjugation) {
+    const cj = state.showConjugation;
+    html += '<div class="overlay" onclick="if(event.target===this){state.showConjugation=null;render()}">';
+    html += '<div class="modal" style="max-width:500px" onclick="event.stopPropagation()">';
+    html += '<div class="modal-title">⊞ Coniugazione</div>';
+    html += '<div class="modal-subtitle" style="margin-bottom:0.8rem;font-style:italic;font-size:0.95rem;color:#d4a853">'+esc(cj.word.word)+(cj.word.translation?' — '+esc(cj.word.translation):'')+'</div>';
+    if (cj.loading) {
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;color:#c97eb8;font-family:monospace;font-size:0.78rem;margin-top:1rem"><span class="spinner" style="border-top-color:#c97eb8"></span> Carico la coniugazione…</div>';
+    } else {
+      html += '<div class="ai-result" style="font-family:monospace;font-size:0.72rem;line-height:1.8;color:#c8c0b0;white-space:pre-wrap">'+esc(cj.result)+'</div>';
+    }
+    html += '<div class="modal-actions"><button class="btn-add" onclick="state.showConjugation=null;render()">Chiudi</button></div>';
+    html += '</div></div>';
   }
 
   // WORD ACTION MODAL
